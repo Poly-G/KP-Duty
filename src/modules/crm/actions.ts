@@ -2,109 +2,101 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireCurrentIdentity } from "@/lib/auth/current-user";
 import { createClient } from "@/lib/supabase/server";
+import {
+  createOpportunityRecord,
+  createOrganizationRecord,
+  createPersonRecord,
+  moveOpportunityToStage,
+} from "./service";
 
 const uuid = z.string().uuid();
+
 const optionalText = (value: FormDataEntryValue | null) => {
   const text = typeof value === "string" ? value.trim() : "";
   return text || null;
 };
 
-function domainFromWebsite(website: string | null) {
-  if (!website) return null;
-
-  try {
-    const normalized = website.match(/^https?:\/\//)
-      ? website
-      : `https://${website}`;
-    return new URL(normalized).hostname.replace(/^www\./, "").toLowerCase();
-  } catch {
-    return null;
-  }
+function refreshCrm(businessSlug?: string) {
+  revalidatePath("/crm");
+  revalidatePath("/crm/companies");
+  revalidatePath("/crm/people");
+  if (businessSlug) revalidatePath(`/crm/${businessSlug}`);
 }
 
 export async function createOrganization(formData: FormData) {
-  await requireCurrentIdentity();
-  const supabase = await createClient();
-
-  const name = z.string().trim().min(1).parse(formData.get("name"));
-  const website = optionalText(formData.get("website"));
-  const publicEmail = optionalText(formData.get("public_email"));
-  const phone = optionalText(formData.get("phone"));
-  const city = optionalText(formData.get("city"));
-  const state = optionalText(formData.get("state"));
-
-  const { error } = await supabase.from("organizations").insert({
-    name,
-    website,
-    domain: domainFromWebsite(website),
-    public_email: publicEmail,
-    phone,
-    city,
-    state,
+  const result = await createOrganizationRecord({
+    source: "ui",
+    requestKey: crypto.randomUUID(),
+    input: {
+      name: z.string().trim().min(1).parse(formData.get("name")),
+      website: optionalText(formData.get("website")),
+      publicEmail: optionalText(formData.get("public_email")),
+      phone: optionalText(formData.get("phone")),
+      city: optionalText(formData.get("city")),
+      state: optionalText(formData.get("state")),
+    },
   });
 
-  if (error) throw new Error(error.message);
-
-  revalidatePath("/crm/companies");
-  revalidatePath("/crm");
+  refreshCrm();
+  return result;
 }
 
 export async function createPerson(formData: FormData) {
-  await requireCurrentIdentity();
-  const supabase = await createClient();
-
-  const firstName = z.string().trim().min(1).parse(formData.get("first_name"));
-  const lastName = optionalText(formData.get("last_name"));
-  const email = optionalText(formData.get("email"));
-  const title = optionalText(formData.get("title"));
   const organizationRaw = optionalText(formData.get("organization_id"));
-  const organizationId = organizationRaw ? uuid.parse(organizationRaw) : null;
 
-  const { error } = await supabase.from("people").insert({
-    first_name: firstName,
-    last_name: lastName,
-    email,
-    title,
-    organization_id: organizationId,
+  const result = await createPersonRecord({
+    source: "ui",
+    requestKey: crypto.randomUUID(),
+    input: {
+      firstName: z.string().trim().min(1).parse(formData.get("first_name")),
+      lastName: optionalText(formData.get("last_name")),
+      email: optionalText(formData.get("email")),
+      title: optionalText(formData.get("title")),
+      organizationId: organizationRaw ? uuid.parse(organizationRaw) : null,
+    },
   });
 
-  if (error) throw new Error(error.message);
-  revalidatePath("/crm/people");
+  refreshCrm();
+  return result;
 }
 
 export async function createOpportunity(formData: FormData) {
-  const { user } = await requireCurrentIdentity();
-  const supabase = await createClient();
-
-  const name = z.string().trim().min(1).parse(formData.get("name"));
-  const businessId = uuid.parse(formData.get("business_id"));
-  const pipelineId = uuid.parse(formData.get("pipeline_id"));
+  const businessSlug = z
+    .string()
+    .trim()
+    .min(1)
+    .parse(formData.get("business_slug"));
   const stageId = uuid.parse(formData.get("stage_id"));
 
+  const supabase = await createClient();
+  const { data: stage, error: stageError } = await supabase
+    .from("pipeline_stages")
+    .select("slug")
+    .eq("id", stageId)
+    .maybeSingle();
+
+  if (stageError) throw new Error(stageError.message);
+  if (!stage) throw new Error("Selected pipeline stage was not found.");
+
   const organizationRaw = optionalText(formData.get("organization_id"));
-  const organizationId = organizationRaw ? uuid.parse(organizationRaw) : null;
 
-  const source = optionalText(formData.get("source"));
-  const sourceUrl = optionalText(formData.get("source_url"));
-  const nextAction = optionalText(formData.get("next_action"));
-  const businessSlug = z.string().trim().min(1).parse(formData.get("business_slug"));
-
-  const { error } = await supabase.from("opportunities").insert({
-    name,
-    business_id: businessId,
-    pipeline_id: pipelineId,
-    stage_id: stageId,
-    organization_id: organizationId,
-    owner_id: user.id,
-    source,
-    source_url: sourceUrl,
-    next_action: nextAction,
+  const result = await createOpportunityRecord({
+    source: "ui",
+    requestKey: crypto.randomUUID(),
+    input: {
+      name: z.string().trim().min(1).parse(formData.get("name")),
+      businessSlug,
+      stageSlug: stage.slug,
+      organizationId: organizationRaw ? uuid.parse(organizationRaw) : null,
+      source: optionalText(formData.get("source")),
+      sourceUrl: optionalText(formData.get("source_url")),
+      nextAction: optionalText(formData.get("next_action")),
+    },
   });
 
-  if (error) throw new Error(error.message);
-  revalidatePath(`/crm/${businessSlug}`);
+  refreshCrm(businessSlug);
+  return result;
 }
 
 export async function moveOpportunityStage(
@@ -112,17 +104,7 @@ export async function moveOpportunityStage(
   stageId: string,
   businessSlug: string,
 ) {
-  await requireCurrentIdentity();
-  const supabase = await createClient();
-
-  const id = uuid.parse(opportunityId);
-  const nextStageId = uuid.parse(stageId);
-
-  const { error } = await supabase
-    .from("opportunities")
-    .update({ stage_id: nextStageId })
-    .eq("id", id);
-
-  if (error) throw new Error(error.message);
-  revalidatePath(`/crm/${businessSlug}`);
+  const result = await moveOpportunityToStage(opportunityId, stageId);
+  refreshCrm(z.string().trim().min(1).parse(businessSlug));
+  return result;
 }

@@ -8,6 +8,7 @@ import {
   House,
   ListTodo,
   BookOpen,
+  Building2,
 } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 import type { CurrentProfile } from "@/lib/auth/current-user";
@@ -16,7 +17,10 @@ import { NavItem } from "@/components/nav-item";
 const nav = [
   { href: "/", label: "Home", icon: House },
   { href: "/work", label: "Work", icon: ListTodo },
-  { href: "/crm", label: "CRM", icon: ContactRound },
+  { href: "/businesses/solta", label: "Solta", icon: Building2 },
+  { href: "/businesses/snd", label: "Sent & Delivered", icon: Building2 },
+  { href: "/businesses/nex", label: "Nex · paused", icon: Building2 },
+  { href: "/crm", label: "All relationships", icon: ContactRound },
   { href: "/projects", label: "Projects", icon: BriefcaseBusiness },
   { href: "/decisions", label: "Decisions", icon: Gavel },
   { href: "/inbox", label: "Inbox", icon: Inbox },
@@ -46,7 +50,7 @@ export function AppShell({ profile, email, children }: AppShellProps) {
           </div>
         </div>
 
-        <nav className="space-y-1">
+        <nav className="min-h-0 overflow-y-auto space-y-1">
           {nav.map((item) => (
             <NavItem key={item.href} href={item.href} label={item.label} icon={<item.icon size={17} strokeWidth={1.8} />} />
           ))}

@@ -1,18 +1,31 @@
-import { EmptyPanel } from "@/components/empty-panel";
 import { PageHeading } from "@/components/page-heading";
+import { NewProjectForm } from "@/components/projects/new-project-form";
+import { ProjectGrid } from "@/components/projects/project-grid";
+import {
+  listProjectFormOptions,
+  listProjects,
+} from "@/modules/projects/queries";
 
-export default function ProjectsPage() {
+export default async function ProjectsPage() {
+  const [projects, options] = await Promise.all([
+    listProjects(),
+    listProjectFormOptions(),
+  ]);
+
   return (
     <>
       <PageHeading
         eyebrow="Projects"
-        title="Portfolio-level project visibility"
-        description="KP Duty mirrors only the project state KP needs. Detailed delivery stays inside Solta, SnD or Nex."
+        title="What is happening across KP?"
+        description="KP keeps the high-level state. Detailed delivery stays inside Solta, SnD, or Nex and links back from each card."
       />
-      <EmptyPanel
-        title="No mirrored projects yet"
-        description="Gate D adds project cards with business, client, owner, phase, health, next milestone and a link to the detailed business system."
+
+      <NewProjectForm
+        businesses={options.businesses}
+        organizations={options.organizations}
       />
+
+      <ProjectGrid initialProjects={projects} />
     </>
   );
 }

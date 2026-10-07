@@ -163,7 +163,7 @@ export async function searchCrm(searchText: string, limit = 8) {
     if (result.error) throw new Error(result.error.message);
   }
 
-  const peopleMap = new Map<string, (typeof peopleByFirstName.data)[number]>();
+  const peopleMap = new Map<string, NonNullable<typeof peopleByFirstName.data>[number]>();
   for (const person of [
     ...(peopleByFirstName.data ?? []),
     ...(peopleByLastName.data ?? []),

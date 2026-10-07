@@ -1,0 +1,15 @@
+import {z} from 'zod';
+import {requireAdminIdentity} from '@/lib/auth/current-user';
+import {createClient} from '@/lib/supabase/server';
+import {PageHeading} from '@/components/page-heading';
+import {ArchiveRecord} from '@/components/archive-record';
+const tables={person:'people',organization:'organizations',opportunity:'opportunities',project:'projects',task:'tasks'} as const;
+export default async function ArchivePage({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}){
+ await requireAdminIdentity();const search=await searchParams;const type=z.enum(['person','organization','opportunity','project','task']).catch('person').parse(search.type);const archived=search.archived==='yes';const q=(search.q||'').trim().slice(0,200);const db=await createClient();
+ let query=db.from(tables[type]).select(type==='person'?'id,first_name,last_name,archived_at':type==='task'?'id,title,archived_at':'id,name,archived_at').order('created_at',{ascending:false}).limit(50);
+ query=archived?query.not('archived_at','is',null):query.is('archived_at',null);
+ if(q)query=query.ilike(type==='person'?'first_name':type==='task'?'title':'name',`%${q.replace(/[\\%_]/g,'\\$&')}%`);
+ const {data,error}=await query;if(error)throw new Error(error.message);
+ const rows=(data||[]) as unknown as {id:string;name?:string;title?:string;first_name?:string;last_name?:string}[];
+ return <><PageHeading eyebrow="Admin" title="Remove & recover records" description="Removal is recoverable archiving. Confirm the exact record, explain why, type its name and verify the action. No permanent deletion is offered."/><form className="mb-5 flex flex-wrap items-end gap-3"><label className="grid gap-2 text-sm">Record type<select name="type" defaultValue={type} className="rounded-lg border border-[var(--border)] p-3">{Object.keys(tables).map(key=><option key={key} value={key}>{key}</option>)}</select></label><label className="grid gap-2 text-sm">Show<select name="archived" defaultValue={archived?'yes':'no'} className="rounded-lg border border-[var(--border)] p-3"><option value="no">Current records</option><option value="yes">Archived records</option></select></label><label className="grid gap-2 text-sm">Find by {type==='person'?'first name':'name'}<input name="q" defaultValue={q} className="rounded-lg border border-[var(--border)] p-3"/></label><button className="rounded-lg border border-[var(--border)] p-3">Find records</button></form><p className="mb-4 text-sm text-[var(--muted)]">Showing up to 50 records. Search to narrow the list. Archiving a shared company affects both business views; active linked work blocks removal.</p><div className="space-y-3">{rows.map(row=>{const name=row.name||row.title||[row.first_name,row.last_name].filter(Boolean).join(' ');return <article key={row.id} className="rounded-xl border border-[var(--border)] p-4"><h2 className="font-medium">{name}</h2><ArchiveRecord id={row.id} name={name} type={type} restoring={archived}/></article>;})}</div>{!rows.length?<p>No matching records.</p>:null}</>;
+}

@@ -1,3 +1,4 @@
+import {LeadImporter} from "@/components/crm/lead-importer";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeading } from "@/components/page-heading";
@@ -24,6 +25,6 @@ export default async function BusinessWorkspacePage({ params }: { params: Promis
       <p className="mb-4 text-sm text-[var(--muted)]">Companies with a sales opportunity or project in this business. A sales opportunity does not mean a client has started delivery.</p>
       {companies.length ? <div className="grid gap-3 sm:grid-cols-2">{companies.map(company => <Link key={company.id} href={`/businesses/${business}/clients/${company.id}`} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 hover:bg-[var(--surface-subtle)]"><h3 className="font-medium">{company.name}</h3><p className="mt-2 text-sm text-[var(--muted)]">{company.opportunityCount} sales opportunities · {company.projectCount} projects</p></Link>)}</div> : <EmptyPanel title="No client relationships yet" description="Companies appear here when they have an opportunity or project in this business." />}
     </section>
-    <BillingPlaceholder />
+    <LeadImporter business={business}/><BillingPlaceholder />
   </>;
 }

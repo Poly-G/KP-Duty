@@ -30,7 +30,7 @@ async function verifyVersion(db: Awaited<ReturnType<typeof createClient>>,id:str
 export async function createDeliverable(form:FormData) {
   const {projectId,business,delivery,db}=await context(form);
   const requirement=String(form.get('requirement_key') || '') || null;
-  if(requirement && !Object.hasOwn(onboardingFields(delivery.engagement.service),requirement)) throw new Error('Unknown requirement.');
+  if(requirement && !Object.hasOwn(onboardingFields(delivery.engagement.service,delivery.engagement.template_version,delivery.engagement.answers),requirement)) throw new Error('Unknown requirement.');
   const {error}=await db.rpc('kp_create_deliverable',{
     p_id:uuid.parse(form.get('request_id')),p_project:projectId,
     p_title:z.string().trim().min(1).max(200).parse(form.get('title')),

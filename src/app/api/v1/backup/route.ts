@@ -6,7 +6,7 @@ export async function GET() {
  if(profile.role!=="admin")return Response.json({error:"Admin permission required."},{status:403});
  const db=await createClient();
  const tables=["businesses","tasks","organizations","people","relationships","pipelines","pipeline_stages","opportunities","opportunity_people","projects","client_engagements","client_engagement_history",
-  "project_messages", "project_progress_drafts", "project_progress_updates", "project_files", "project_notification_jobs","project_deliverables","deliverable_versions","deliverable_version_files","deliverable_reviews","deliverable_publications","decisions","chat_messages","knowledge_documents","knowledge_revisions","activity_events","external_links"];
+  "project_messages", "project_progress_drafts", "project_progress_updates", "project_files", "project_notification_jobs","project_deliverables","deliverable_versions","deliverable_version_files","deliverable_reviews","deliverable_publications", "lead_import_batches", "lead_import_keys", "archive_events","decisions","chat_messages","knowledge_documents","knowledge_revisions","activity_events","external_links"];
  try {
   const entries=await Promise.all(tables.map(async table=>{
    const rows:unknown[]=[];
@@ -14,7 +14,7 @@ export async function GET() {
     const query=db.from(table).select("*");
     const ordered=table==="opportunity_people"
      ?query.order("opportunity_id").order("person_id")
-     :query.order("id");
+     :table==="lead_import_keys"?query.order("business_id").order("fingerprint"):query.order("id");
     const {data,error}=await ordered.range(offset,offset+999);
     if(error)throw new Error(error.message);
     rows.push(...data);

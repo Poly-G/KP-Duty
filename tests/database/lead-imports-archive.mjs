@@ -1,0 +1,38 @@
+process.on('uncaughtException',e=>{console.error(e.message,e.where||'');process.exit(1);});
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const {PGlite}=await import(process.env.PGLITE_TEST_PACKAGE||'@electric-sql/pglite');const db=new PGlite();
+await db.exec(`create role anon;create role authenticated;create schema auth;create schema private;grant usage on schema auth,private,public to authenticated;
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+create table profiles(id uuid primary key,role text,status text);create table businesses(id uuid primary key,slug text,is_active boolean);
+create function private.is_active_member() returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.profiles where id=auth.uid() and status='active')$$;
+create function private.is_admin() returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.profiles where id=auth.uid() and role='admin' and status='active')$$;
+create table organizations(id uuid primary key,name text,website text,domain text,phone text,public_email text,description text,archived_at timestamptz);create unique index org_domain on organizations(lower(domain)) where archived_at is null;
+create table people(id uuid primary key,organization_id uuid references organizations,first_name text,last_name text,email text,phone text,notes text,archived_at timestamptz,created_at timestamptz default now());
+create table pipelines(id uuid primary key,business_id uuid references businesses,is_default boolean,archived_at timestamptz);
+create table pipeline_stages(id uuid primary key,pipeline_id uuid references pipelines,kind text,position integer);
+create table opportunities(id uuid primary key,business_id uuid references businesses,pipeline_id uuid references pipelines,stage_id uuid references pipeline_stages,organization_id uuid references organizations,name text,owner_id uuid references profiles,source text,source_url text,next_action text,metadata jsonb,created_at timestamptz default now(),archived_at timestamptz);
+create table decisions(id uuid primary key);create table projects(id uuid primary key,organization_id uuid references organizations,name text,archived_at timestamptz);create table tasks(id uuid primary key,title text,archived_at timestamptz);create table relationships(id uuid primary key,organization_id uuid references organizations,archived_at timestamptz);
+insert into profiles values('00000000-0000-4000-8000-000000000001','admin','active'),('00000000-0000-4000-8000-000000000002','team_member','active'),('00000000-0000-4000-8000-000000000003','team_member','disabled');
+insert into businesses values('10000000-0000-4000-8000-000000000001','solta',true),('10000000-0000-4000-8000-000000000002','snd',true);
+insert into pipelines values('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001',true,null),('20000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002',true,null);
+insert into pipeline_stages values('30000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','open',1),('30000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','open',1);`);
+await db.exec(await readFile(new URL('../../supabase/migrations/20261007232419_lead_imports_recoverable_archives.sql',import.meta.url),'utf8'));
+async function user(n){await db.exec(`reset role;set role authenticated;select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-00000000000${n}',false);`);}
+const lead=(company,business='solta',service='website')=>({company,business,service,domain:company.toLowerCase()+'.example.test',website:'https://'+company.toLowerCase()+'.example.test',email:'owner@'+company.toLowerCase()+'.example.test',contact:'Sample owner',phone:'',notes:'Research note',source:'Chat research',source_url:'',override_reason:''});
+async function batch(n,rows){return (await db.query('select kp_import_lead_batch($1,$2,$3) as result',['40000000-0000-4000-8000-00000000000'+n,'leads.csv',rows])).rows[0].result;}
+await user(2);const rows=[lead('Acme'),lead('MailCo','snd','email marketing')];assert.deepEqual(await batch(1,rows),{added:2,skipped:0});assert.deepEqual(await batch(1,rows),{added:2,skipped:0});assert.deepEqual(await batch(2,rows),{added:0,skipped:2});
+await assert.rejects(batch(1,[lead('Different')]),/retry mismatch/);
+await assert.rejects(batch(3,[lead('Wrong','snd','website')]),/override/);
+await assert.rejects(batch(3,[lead('Atomic'),{...lead('Bad'),email:'invalid'}]),/Invalid company or email/);
+await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from opportunities')).rows[0].n,2,'Failed batch left partial leads');assert.equal((await db.query('select count(*)::int n from organizations')).rows[0].n,2);
+const person=(await db.query('select id,first_name from people limit 1')).rows[0];const org=(await db.query('select id,name from organizations limit 1')).rows[0];
+await user(2);await assert.rejects(db.query('select kp_archive_record($1,$2,$3,$4,$5)',['person',person.id,'archive','ARCHIVE '+person.first_name,'Duplicate contact']),/Admin/);
+await user(1);await assert.rejects(db.query('select kp_archive_record($1,$2,$3,$4,$5)',['person',person.id,'archive','yes','Duplicate contact']),/exact confirmation/);
+await assert.rejects(db.query('select kp_archive_record($1,$2,$3,$4,$5)',['organization',org.id,'archive','ARCHIVE '+org.name,'Duplicate company']),/linked/);
+await db.query('select kp_archive_record($1,$2,$3,$4,$5)',['person',person.id,'archive','ARCHIVE '+person.first_name,'Duplicate contact']);
+await db.query('select kp_archive_record($1,$2,$3,$4,$5)',['person',person.id,'restore','RESTORE '+person.first_name,'Restore needed contact']);
+await db.exec('reset role');assert.equal((await db.query('select archived_at from people where id=$1',[person.id])).rows[0].archived_at,null);assert.equal((await db.query('select count(*)::int n from archive_events')).rows[0].n,2);
+await user(3);await assert.rejects(batch(4,[lead('Disabled')]),/membership/);await assert.rejects(db.query('select kp_archive_record($1,$2,$3,$4,$5)',['person',person.id,'archive','ARCHIVE '+person.first_name,'Disabled action']),/Admin/);
+await db.exec('reset role;set role anon');await assert.rejects(batch(5,[lead('Anonymous')]),/permission denied/);await assert.rejects(db.query('select * from lead_import_batches'),/permission denied/);
+await db.close();console.log('Lead/archive checks passed: atomic mixed-business imports, deduplication, exact retries, routing override evidence, admin-only typed confirmation, linked-company block, recoverable restore and disabled/anonymous denial.');

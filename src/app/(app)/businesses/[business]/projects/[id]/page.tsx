@@ -1,3 +1,4 @@
+import {OnboardingEditor} from "@/components/projects/onboarding-editor";
 import Link from "next/link";
 import {ProjectDeliverables} from "@/components/projects/project-deliverables";
 import {ProjectCollaboration} from "@/components/projects/project-collaboration";
@@ -9,22 +10,22 @@ import {BillingPlaceholder} from "@/components/projects/billing-placeholder";
 import {requireActiveIdentity} from "@/lib/auth/current-user";
 import {getDelivery} from "@/modules/delivery/queries";
 import {saveClientDelivery} from "@/modules/delivery/actions";
-import {onboardingFields,readinessIssues,serviceTemplates} from "@/modules/delivery/templates";
+import {onboardingFields,requiredOnboardingKeys,readinessIssues,serviceTemplates} from "@/modules/delivery/templates";
 
 export default async function DeliveryPage({params}:{params:Promise<{business:string;id:string}>}){
  const {business,id}=await params;
  if(!["solta","snd"].includes(business)||!z.string().uuid().safeParse(id).success)notFound();
  const [{profile},delivery]=await Promise.all([requireActiveIdentity(),getDelivery(id,business)]);
  if(!delivery)notFound(); const {project,engagement:e}=delivery;const admin=profile.role==="admin";const issues=readinessIssues(e);
- const fields=onboardingFields(e.service);
+ const fields=onboardingFields(e.service,e.template_version,e.answers);
  function hidden(operation:string){return <><input type="hidden" name="id" value={id}/><input type="hidden" name="business" value={business}/><input type="hidden" name="revision" value={e.revision}/><input type="hidden" name="operation" value={operation}/></>;}
  return <>
   <Link href={`/businesses/${business}/clients/${project.organization.id}`} className="mb-5 inline-block text-sm text-[var(--muted)]">← {project.organization.name}</Link>
   <PageHeading eyebrow={`${project.business.name} · ${serviceTemplates[e.service].label}`} title={project.name} description={`Owner: ${project.owner.display_name || "Unassigned"}. ${e.started_at ? "Delivery start approved." : "Preparing for delivery."}`}/>
   <section className="mb-7 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
    <h2 className="font-medium">Onboarding</h2><p className="mt-2 text-sm text-[var(--muted)]">Staff preparation · template v{e.template_version}. Client login and submission will be added later. Do not enter passwords or access tokens here.</p>
-   <ActionForm key={`answers-${e.revision}`} action={saveClientDelivery} className="mt-5 grid gap-4 sm:grid-cols-2">{hidden("answers")}{Object.entries(fields).map(([key,label])=><label key={key} className="grid gap-2 text-sm">{label}{key==="approver_email"?<input name={key} type="email" defaultValue={e.answers[key]||""} className="rounded-lg border border-[var(--border)] p-3"/>:<textarea name={key} defaultValue={e.answers[key]||""} maxLength={10000} rows={3} className="rounded-lg border border-[var(--border)] p-3"/>}</label>)}<button type="submit" className="rounded-lg bg-[var(--text)] px-4 py-2 text-sm text-white">Save draft</button></ActionForm>
-   <ActionForm key={`submit-${e.revision}`} action={saveClientDelivery} className="mt-4 space-y-3">{hidden("submit")}{Object.keys(fields).map(key=><input key={key} type="hidden" name={key} value={e.answers[key]||""}/>)}<button type="submit" disabled={Object.keys(fields).some(key=>!e.answers[key]?.trim())} className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-40">Submit saved onboarding for review</button><p className="text-sm text-[var(--muted)]">{e.submitted_at?"Submitted for review. Editing answers resets the review.":"Save all answers before submitting."}</p></ActionForm>
+   <OnboardingEditor key={e.revision} engagement={e} business={business} companyName={project.organization.name}/>
+   <ActionForm key={`submit-${e.revision}`} action={saveClientDelivery} className="mt-4 space-y-3">{hidden("submit")}{Object.keys(fields).map(key=><input key={key} type="hidden" name={key} value={e.answers[key]||""}/>)}<button type="submit" disabled={requiredOnboardingKeys(e.service,e.template_version,e.answers).some(key=>!e.answers[key]?.trim())} className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-40">Submit saved onboarding for review</button><p className="text-sm text-[var(--muted)]">{e.submitted_at?"Submitted for review. Editing answers resets the review.":"Save all answers before submitting."}</p></ActionForm>
   </section>
   <section className="mb-7 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5"><h2 className="font-medium">Readiness & approvals</h2><ActionForm key={`review-${e.revision}`} action={saveClientDelivery} className="mt-4 space-y-4">{hidden("review")}
    <label className="flex gap-2 text-sm"><input type="checkbox" name="onboarding_reviewed" defaultChecked={e.onboarding_reviewed} disabled={!e.submitted_at}/>Onboarding reviewed</label>

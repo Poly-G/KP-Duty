@@ -9,6 +9,7 @@ import {
   ListTodo,
   BookOpen,
   Building2,
+  Archive,
 } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 import type { CurrentProfile } from "@/lib/auth/current-user";
@@ -26,6 +27,7 @@ const nav = [
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/requests", label: "Requests", icon: MessageSquarePlus },
   { href: "/library", label: "Library", icon: BookOpen },
+  { href: "/archive", label: "Remove & recover", icon: Archive },
 ];
 
 type AppShellProps = {
@@ -51,7 +53,7 @@ export function AppShell({ profile, email, children }: AppShellProps) {
         </div>
 
         <nav className="min-h-0 overflow-y-auto space-y-1">
-          {nav.map((item) => (
+          {nav.filter(item=>item.href!=="/archive"||profile.role==="admin").map((item) => (
             <NavItem key={item.href} href={item.href} label={item.label} icon={<item.icon size={17} strokeWidth={1.8} />} />
           ))}
         </nav>
@@ -91,7 +93,7 @@ export function AppShell({ profile, email, children }: AppShellProps) {
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 flex h-16 overflow-x-auto border-t border-[var(--border)] bg-[var(--surface)]/95 px-1 backdrop-blur md:hidden">
-        {nav.map((item) => (
+        {nav.filter(item=>item.href!=="/archive"||profile.role==="admin").map((item) => (
           <NavItem key={item.href} href={item.href} label={item.label} icon={<item.icon size={18} strokeWidth={1.8} />} mobile />
         ))}
       </nav>

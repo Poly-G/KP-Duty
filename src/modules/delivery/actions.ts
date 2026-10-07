@@ -4,7 +4,7 @@ import {z} from "zod";
 import {requireActiveIdentity,requireAdminIdentity} from "@/lib/auth/current-user";
 import {createClient} from "@/lib/supabase/server";
 import {getDelivery} from "./queries";
-import {onboardingFields} from "./templates";
+import {onboardingFields,requiredOnboardingKeys} from "./templates";
 const uuid=z.string().uuid();
 function refresh(business:string,id:string){revalidatePath(`/businesses/${business}`);revalidatePath(`/businesses/${business}/projects/${id}`);revalidatePath(`/businesses/${business}/clients`,"layout");revalidatePath("/projects");}
 export async function createClientDelivery(data:FormData){
@@ -22,8 +22,8 @@ export async function saveClientDelivery(data:FormData){
  const operation=z.enum(["answers","submit","review","start"]).parse(data.get("operation"));
  const patch:Record<string,unknown>={};
  if(operation==="answers"||operation==="submit"){
-  const answers:Record<string,string>={};for(const key of Object.keys(onboardingFields(delivery.engagement.service)))answers[key]=z.string().trim().max(10000).parse(data.get(key)??"");
-  if(operation==="submit") {for(const value of Object.values(answers))if(!value)throw new Error("Complete the required fields.");z.email().parse(answers.approver_email);patch.submit=true;}
+  const answers:Record<string,string>={};for(const key of Object.keys(onboardingFields(delivery.engagement.service,delivery.engagement.template_version,{...delivery.engagement.answers,branding_included:String(data.get('branding_included')||'')})))answers[key]=z.string().trim().max(10000).parse(data.get(key)??"");
+  if(operation==="submit") {for(const key of requiredOnboardingKeys(delivery.engagement.service,delivery.engagement.template_version,answers))if(!answers[key])throw new Error("Complete the required fields.");z.email().parse(answers.approver_email);patch.submit=true;}
   patch.answers=answers;
  }
  if(operation==="review"){

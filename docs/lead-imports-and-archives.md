@@ -1,0 +1,11 @@
+# Lead imports and safe removal
+
+Each active Solta/Sent business workspace offers CSV and XLSX lead imports. Google Sheets can export either format; legacy XLS must first be converted. One populated worksheet, a header row, up to 500 leads, 50 columns and 2 MB compressed file size are supported. XLSX expanded entries are independently bounded to 12 MB before parsing. Macros, external workbook links and formulas are rejected; export calculated values instead. Research notes and source URLs are retained as data and never executed or treated as instructions.
+
+Column aliases cover company/business name, website/domain, email, contact name, phone, service, source, source URL and notes. Preview shows each destination. Recognized website/branding/office-work services suggest Solta; lifecycle/email marketing suggests Sent. Unknown services retain the selected business for review. Conflicts require an explicit routing explanation. Invalid rows are visibly excluded; users fix those in the source sheet and preview again. No lead is automatically contacted.
+
+The final server-side import revalidates rows and runs atomically. Stable batch IDs retain the same result on exact retries. Business/company/service keys prevent repeated imports from creating new opportunities. Companies match domain first, then an unambiguous exact name; ambiguous company matches stop the batch. An existing pipeline lead is preserved rather than overwritten. Contact email matching is restricted to the matched company. Archived import keys remain retained; restore an archived lead instead of importing it again.
+
+Admin “Remove & recover” provides archive/restore for people, companies, opportunities, projects and tasks. Both operations require a reason, exact typed confirmation and final checked verification. Removal hides records from ordinary views, preserving linked history and actor attribution. Company archiving is blocked when active contacts, relationships, opportunities or projects remain. Permanent deletion privileges for core records are removed from authenticated users. Restore may require resolving an intervening uniqueness conflict first.
+
+Backups include batch receipts, imported lead keys and archive history. These are internal staff capabilities; no client identity, external invitation or outgoing email is created by import/removal.

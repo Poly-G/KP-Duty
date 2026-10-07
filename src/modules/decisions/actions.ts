@@ -54,7 +54,7 @@ export async function createDecision(formData: FormData) {
   });
 
   refreshDecisions();
-  return result;
+  void result;
 }
 
 export async function setDecisionStatus(decisionId: string, status: string) {
@@ -77,5 +77,5 @@ export async function resolveDecision(formData: FormData) {
 
   const result = await resolveDecisionRecord(id, finalDecision);
   refreshDecisions();
-  return result;
+  void result;
 }

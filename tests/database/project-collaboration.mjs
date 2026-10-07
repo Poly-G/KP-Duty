@@ -1,0 +1,73 @@
+process.on('uncaughtException',e=>{console.error(e.message,e.where||'');process.exit(1);});
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+// PGLITE_TEST_PACKAGE may point to an isolated test-runtime install outside the app.
+const {PGlite}=await import(process.env.PGLITE_TEST_PACKAGE || '@electric-sql/pglite');
+const db=new PGlite();
+await db.exec(`
+create role anon; create role authenticated;
+create schema auth; create schema private;
+grant usage on schema auth,private,public to authenticated;
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+create table public.profiles(id uuid primary key,role text,status text);
+create table public.businesses(id uuid primary key,slug text,is_active boolean);
+create table public.organizations(id uuid primary key,name text);
+create table public.projects(id uuid primary key,business_id uuid references businesses,organization_id uuid references organizations,name text,owner_id uuid references profiles,status text default 'planned',phase text,archived_at timestamptz,created_by uuid default auth.uid());
+create function private.is_active_member() returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.profiles where id=auth.uid() and status='active')$$;
+create function private.is_admin() returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.profiles where id=auth.uid() and status='active' and role='admin')$$;
+grant select on profiles,businesses,organizations to authenticated;
+grant select,insert,update on projects to authenticated;
+insert into profiles values ('00000000-0000-4000-8000-000000000001','admin','active'),('00000000-0000-4000-8000-000000000002','team_member','active'),('00000000-0000-4000-8000-000000000003','team_member','disabled');
+insert into businesses values ('10000000-0000-4000-8000-000000000001','solta',true),('10000000-0000-4000-8000-000000000002','snd',true),('10000000-0000-4000-8000-000000000003','nex',false);
+insert into organizations values ('20000000-0000-4000-8000-000000000001','Sample Company');
+`);
+await db.exec(await readFile(new URL('../../supabase/migrations/20261007190022_client_delivery_foundation.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../../supabase/migrations/20261007191750_client_delivery_start_authority.sql',import.meta.url),'utf8'));
+
+await db.exec(`create schema storage;grant usage on schema storage to authenticated;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text,unique(bucket_id,name));alter table storage.objects enable row level security;grant select,insert,update,delete on storage.objects to authenticated;`);
+await db.exec(await readFile(new URL('../../supabase/migrations/20261007220430_project_client_collaboration.sql',import.meta.url),'utf8'));
+const project='30000000-0000-4000-8000-000000000001';
+async function user(n){await db.exec(`reset role;set role authenticated;select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-00000000000${n}',false);`);}
+await user(1);
+await db.query('select public.kp_create_client_delivery($1,$2,$3,$4,$5)',[project,'solta','20000000-0000-4000-8000-000000000001','Sample delivery','website']);
+await user(2);
+async function save(revision,work){return db.query('select kp_save_project_progress($1,$2,$3,$4,$5)',[project,revision,work,'Approve content',JSON.stringify([{title:'Content',status:'in_progress'}])]);}
+async function publish(revision){return db.query('select kp_publish_project_progress($1,$2)',[project,revision]);}
+await save(0,'Preparing content');await assert.rejects(save(0,'Stale'),/changed/);
+assert.equal((await db.query('select * from project_progress_updates')).rows.length,0);
+await publish(1);await publish(1);
+assert.equal((await db.query('select * from project_progress_updates')).rows.length,1,'Publish retry duplicated snapshot');
+await save(1,'PRIVATE DRAFT');
+assert.equal((await db.query('select current_work from project_progress_updates')).rows[0].current_work,'Preparing content','Draft leaked into publication');
+await assert.rejects(publish(1),/changed/);
+await assert.rejects(db.query("update project_progress_updates set current_work='tamper'"),/permission denied/);
+await assert.rejects(db.query("insert into project_progress_updates(project_id,draft_revision,current_work,next_action,milestones) values($1,999,'tamper','','[]')",[project]),/permission denied/);
+await db.query("insert into project_messages(id,project_id,audience,body) values(gen_random_uuid(),$1,'internal','PRIVATE NOTE')",[project]);
+await db.query("insert into project_messages(id,project_id,audience,body) values(gen_random_uuid(),$1,'client','Hello client')",[project]);
+assert.equal((await db.query('select * from project_notification_jobs')).rows.length,2,'Internal note queued an email');
+assert.ok((await db.query('select status from project_notification_jobs')).rows.every(j=>j.status==='held'));
+await assert.rejects(db.query("update project_notification_jobs set status='sent'"),/permission denied/);
+await assert.rejects(db.query("insert into project_messages(id,project_id,audience,body,author_id) values(gen_random_uuid(),$1,'client','Fake author','00000000-0000-4000-8000-000000000001')",[project]),/Author|row-level/);
+const file='40000000-0000-4000-8000-000000000001';const path=project+'/'+file+'/test.pdf';
+await db.query("insert into project_files(id,project_id,series_id,version,name,object_path,size_bytes,mime_type,sha256) values($1,$2,$1,1,'test.pdf',$3,100,'application/pdf',$4)",[file,project,path,'a'.repeat(64)]);
+await assert.rejects(db.query("update project_files set state='ready' where id=$1",[file]),/Upload not complete/);
+await assert.rejects(db.query("insert into storage.objects(bucket_id,name) values('kp-project-files','wrong/path.pdf')"),/row-level/);
+await user(1);await assert.rejects(db.query("insert into storage.objects(bucket_id,name) values('kp-project-files',$1)",[path]),/row-level/);
+await user(2);await db.query("insert into storage.objects(bucket_id,name) values('kp-project-files',$1)",[path]);
+await db.query("update project_files set state='ready',audience='client' where id=$1",[file]);
+await assert.rejects(db.query("update project_files set name='changed.pdf' where id=$1",[file]),/immutable/);
+assert.equal((await db.query("delete from storage.objects returning name")).rows.length,0,'Immutable upload could be deleted');
+await assert.rejects(db.query("insert into storage.objects(bucket_id,name) values('kp-project-files',$1)",[path]),/row-level|duplicate/);
+await assert.rejects(db.query("insert into project_files(id,project_id,series_id,version,name,drive_url) values(gen_random_uuid(),$1,$2,3,'Drive','https://drive.google.com/file/d/sample')",[project,file]),/Invalid file version/);
+await db.query("insert into project_files(id,project_id,series_id,version,name,drive_url) values(gen_random_uuid(),$1,$2,2,'Drive','https://drive.google.com/file/d/sample')",[project,file]);
+assert.equal((await db.query('select count(*)::int as count from project_files')).rows[0].count,2);
+await assert.rejects(db.query(`update project_progress_drafts set milestones='[{"title":"Bad","status":"fictional"}]' where id=$1`,[project]),/Invalid milestone/);
+await assert.rejects(db.query("insert into project_files(id,project_id,series_id,version,name,object_path,size_bytes,mime_type) values(gen_random_uuid(),$1,gen_random_uuid(),1,'bad.pdf','bad',1,'application/pdf')",[project]),/series|check constraint/);
+await assert.rejects(db.query(`update project_progress_drafts set milestones='[{"title":{},"status":"pending"}]' where id=$1`,[project]),/Invalid milestone/);
+await db.query('update projects set archived_at=now() where id=$1',[project]);
+assert.equal((await db.query('select * from storage.objects')).rows.length,0,'Archived file download allowed');
+await assert.rejects(publish(2),/Active client project/);
+await assert.rejects(save(2,'Archived'),/Active client project/);
+await user(3);assert.equal((await db.query('select * from project_messages')).rows.length,0);assert.equal((await db.query('select * from storage.objects')).rows.length,0);await assert.rejects(publish(2),/membership/);
+await db.exec('reset role;set role anon;');await assert.rejects(db.query('select * from project_files'),/permission denied/);await assert.rejects(publish(2),/permission denied/);
+await db.close();console.log('Collaboration database checks passed: explicit immutable publication, stale drafts, publish retry, internal notes excluded from notifications, held email queue, actor identity, private immutable files, reserved upload paths, version integrity, disabled/anonymous denial.');

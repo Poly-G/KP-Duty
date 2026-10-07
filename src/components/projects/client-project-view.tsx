@@ -1,0 +1,11 @@
+import type {Progress,ProjectFile,ProjectMessage} from '@/modules/project-collaboration/queries';
+export function ClientProjectView({business,name,progress,files,messages}:{business:string;name:string;progress:Progress|null;files:ProjectFile[];messages:ProjectMessage[]}){
+ const brand=business==='solta'?'Solta':'Sent & Delivered';
+ return <section className="rounded-2xl border border-[var(--border)] bg-white p-6 text-slate-900">
+  <p className="text-sm font-semibold tracking-widest uppercase">{brand}</p><h1 className="mt-5 text-3xl font-semibold">{name}</h1>
+  <h2 className="mt-8 text-xl font-medium">Your progress</h2>
+  {progress?<><p className="mt-3 whitespace-pre-wrap">{progress.current_work}</p><ol className="mt-5 space-y-3">{progress.milestones.map((m,index)=><li key={index} className="flex justify-between gap-4 rounded-lg bg-slate-50 p-3"><span>{m.title}</span><span className="text-sm text-slate-600">{m.status==='complete'?'Complete':m.status==='in_progress'?'In progress':'Upcoming'}</span></li>)}</ol><h3 className="mt-5 font-medium">Your next action</h3><p className="mt-2 whitespace-pre-wrap">{progress.next_action||'No action needed right now.'}</p></>:<p className="mt-3 text-slate-600">Your team hasn’t published a progress update yet.</p>}
+  <h2 className="mt-8 text-xl font-medium">Shared files</h2><ul className="mt-3 space-y-3">{files.filter(f=>f.audience==='client'&&f.state==='ready').map(f=><li key={f.id}><a href={f.drive_url||`/api/v1/project-files/${f.id}`} target={f.drive_url?'_blank':undefined} rel="noreferrer" className="underline">{f.name}</a><span className="ml-2 text-sm text-slate-600">Version {f.version}</span></li>)}</ul>{!files.some(f=>f.audience==='client'&&f.state==='ready')?<p className="mt-3 text-slate-600">No files shared yet.</p>:null}
+  <h2 className="mt-8 text-xl font-medium">Messages</h2><div className="mt-3 space-y-3">{messages.filter(m=>m.audience==='client').map(m=><article key={m.id} className="rounded-lg bg-slate-50 p-4"><p className="whitespace-pre-wrap">{m.body}</p><p className="mt-2 text-xs text-slate-500">{m.author?.display_name||'Your team'} · {new Date(m.created_at).toLocaleDateString('en-US',{timeZone:'UTC'})}</p></article>)}</div>{!messages.some(m=>m.audience==='client')?<p className="mt-3 text-slate-600">No messages yet.</p>:null}
+ </section>;
+}

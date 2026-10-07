@@ -5,7 +5,8 @@ export async function GET() {
  const {profile}=await requireActiveIdentity();
  if(profile.role!=="admin")return Response.json({error:"Admin permission required."},{status:403});
  const db=await createClient();
- const tables=["businesses","tasks","organizations","people","relationships","pipelines","pipeline_stages","opportunities","opportunity_people","projects","client_engagements","client_engagement_history","decisions","chat_messages","knowledge_documents","knowledge_revisions","activity_events","external_links"];
+ const tables=["businesses","tasks","organizations","people","relationships","pipelines","pipeline_stages","opportunities","opportunity_people","projects","client_engagements","client_engagement_history",
+  "project_messages", "project_progress_drafts", "project_progress_updates", "project_files", "project_notification_jobs","decisions","chat_messages","knowledge_documents","knowledge_revisions","activity_events","external_links"];
  try {
   const entries=await Promise.all(tables.map(async table=>{
    const rows:unknown[]=[];
@@ -24,7 +25,7 @@ export async function GET() {
   const {data:profiles,error}=await db.from("profiles").select("id,display_name,role,status");
   if(error)throw new Error(error.message);
   const exportedAt=new Date().toISOString();
-  return Response.json({format:"kp-duty-company-backup",version:1,exportedAt,scope:"Shared company records plus the signed-in user’s visible Inbox. Credentials and private ChatGPT histories are excluded.",profiles,tables:Object.fromEntries(entries)},{headers:{
+  return Response.json({format:"kp-duty-company-backup",version:1,exportedAt,scope:"Shared company records plus the signed-in user’s visible Inbox. File metadata is included; uploaded bytes require a separate private storage export. Credentials and private ChatGPT histories are excluded.",profiles,tables:Object.fromEntries(entries)},{headers:{
    "Content-Disposition":'attachment; filename="kp-duty-backup-'+exportedAt.slice(0,10)+'.json"',
    "Cache-Control":"private, no-store",
   }});

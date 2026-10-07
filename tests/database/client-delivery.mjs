@@ -21,6 +21,7 @@ insert into businesses values ('10000000-0000-4000-8000-000000000001','solta',tr
 insert into organizations values ('20000000-0000-4000-8000-000000000001','Sample Company');
 `);
 await db.exec(await readFile(new URL('../../supabase/migrations/20261007190022_client_delivery_foundation.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../../supabase/migrations/20261007191750_client_delivery_start_authority.sql',import.meta.url),'utf8'));
 const project='30000000-0000-4000-8000-000000000001';const company='20000000-0000-4000-8000-000000000001';
 async function user(n){await db.exec(`reset role;set role authenticated;select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-00000000000${n}',false);`);}
 async function create(id,business='solta',service='website'){return db.query('select public.kp_create_client_delivery($1,$2,$3,$4,$5)',[id,business,company,'Sample delivery',service]);}
@@ -52,6 +53,7 @@ await save(4,{payment_evidence:'Receipt 123 verified'});
 await save(5,{},true);const started=await engagement();assert.ok(started.started_at);
 assert.equal((await db.query('select status from projects where id=$1',[project])).rows[0].status,'active');
 await assert.rejects(db.query('update client_engagements set started_at=null,started_by=null where id=$1',[project]),/immutable/);
+await user(2);await assert.rejects(save(6,{},true),/Admin/);await user(1);
 await save(6,{answers:{...answers,website_pages:'Revised scope'}});const revised=await engagement();assert.equal(revised.onboarding_reviewed,false);assert.equal(revised.submitted_at,null);
 assert.equal((await db.query('select count(*)::int as count from client_engagement_history where engagement_id=$1',[project])).rows[0].count,7);
 await assert.rejects(db.query("update client_engagement_history set snapshot='{}' where engagement_id=$1",[project]),/permission denied/);

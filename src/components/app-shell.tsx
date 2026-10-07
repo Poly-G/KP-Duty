@@ -42,7 +42,7 @@ export function AppShell({ profile, email, children }: AppShellProps) {
 
         <nav className="space-y-1">
           {nav.map((item) => (
-            <NavItem key={item.href} {...item} />
+            <NavItem key={item.href} href={item.href} label={item.label} icon={<item.icon size={17} strokeWidth={1.8} />} />
           ))}
         </nav>
 
@@ -82,7 +82,7 @@ export function AppShell({ profile, email, children }: AppShellProps) {
 
       <nav className="fixed inset-x-0 bottom-0 z-30 flex h-16 border-t border-[var(--border)] bg-[var(--surface)]/95 px-1 backdrop-blur md:hidden">
         {nav.map((item) => (
-          <NavItem key={item.href} {...item} mobile />
+          <NavItem key={item.href} href={item.href} label={item.label} icon={<item.icon size={18} strokeWidth={1.8} />} mobile />
         ))}
       </nav>
     </div>

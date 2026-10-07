@@ -2,20 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 type NavItemProps = {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: ReactNode;
   mobile?: boolean;
 };
 
 export function NavItem({
   href,
   label,
-  icon: Icon,
+  icon,
   mobile = false,
 }: NavItemProps) {
   const pathname = usePathname();
@@ -35,7 +35,7 @@ export function NavItem({
           : "text-[var(--muted)] hover:bg-[var(--surface-subtle)] hover:text-[var(--text)]",
       )}
     >
-      <Icon size={mobile ? 18 : 17} strokeWidth={1.8} />
+      {icon}
       <span className="truncate">{label}</span>
     </Link>
   );

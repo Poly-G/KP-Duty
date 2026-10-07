@@ -10,7 +10,11 @@ export async function GET() {
   const entries=await Promise.all(tables.map(async table=>{
    const rows:unknown[]=[];
    for(let offset=0;;offset+=1000){
-    const {data,error}=await db.from(table).select("*").order("id").range(offset,offset+999);
+    const query=db.from(table).select("*");
+    const ordered=table==="opportunity_people"
+     ?query.order("opportunity_id").order("person_id")
+     :query.order("id");
+    const {data,error}=await ordered.range(offset,offset+999);
     if(error)throw new Error(error.message);
     rows.push(...data);
     if(data.length<1000)break;
@@ -24,7 +28,8 @@ export async function GET() {
    "Content-Disposition":'attachment; filename="kp-duty-backup-'+exportedAt.slice(0,10)+'.json"',
    "Cache-Control":"private, no-store",
   }});
- } catch {
+ } catch (error) {
+  console.error("Company backup failed", error);
   return Response.json({error:"The backup could not finish. Please try again."},{status:500,headers:{"Cache-Control":"no-store"}});
  }
 }

@@ -150,8 +150,10 @@ export async function updateTaskForSiteTool(
     })
     .parse(patch);
 
+  let result = null;
+
   if (parsed.stage !== undefined) {
-    await setOwnedTaskStage(id, parsed.stage);
+    result = await setOwnedTaskStage(id, parsed.stage);
   }
 
   const details = {
@@ -168,14 +170,14 @@ export async function updateTaskForSiteTool(
   );
 
   if (hasDetails) {
-    return updateOwnedTask(id, details);
+    result = await updateOwnedTask(id, details);
   }
 
-  if (parsed.stage !== undefined) {
-    return setOwnedTaskStage(id, parsed.stage);
+  if (!result) {
+    throw new Error("No task changes were provided.");
   }
 
-  throw new Error("No task changes were provided.");
+  return result;
 }
 
 export async function assignTaskForSiteTool(

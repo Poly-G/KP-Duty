@@ -109,7 +109,16 @@ export async function searchCrm(searchText: string, limit = 8) {
   const supabase = await createClient();
   const pattern = `%${query}%`;
 
-  const [organizations, people, opportunities] = await Promise.all([
+  const personSelect =
+    "id,first_name,last_name,email,phone,title,organization:organizations(id,name)";
+
+  const [
+    organizations,
+    peopleByFirstName,
+    peopleByLastName,
+    peopleByEmail,
+    opportunities,
+  ] = await Promise.all([
     supabase
       .from("organizations")
       .select("id,name,website,public_email,phone,city,state")
@@ -118,13 +127,21 @@ export async function searchCrm(searchText: string, limit = 8) {
       .limit(safeLimit),
     supabase
       .from("people")
-      .select(
-        "id,first_name,last_name,email,phone,title,organization:organizations(id,name)",
-      )
+      .select(personSelect)
       .is("archived_at", null)
-      .or(
-        `first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`,
-      )
+      .ilike("first_name", pattern)
+      .limit(safeLimit),
+    supabase
+      .from("people")
+      .select(personSelect)
+      .is("archived_at", null)
+      .ilike("last_name", pattern)
+      .limit(safeLimit),
+    supabase
+      .from("people")
+      .select(personSelect)
+      .is("archived_at", null)
+      .ilike("email", pattern)
       .limit(safeLimit),
     supabase
       .from("opportunities")
@@ -136,13 +153,28 @@ export async function searchCrm(searchText: string, limit = 8) {
       .limit(safeLimit),
   ]);
 
-  if (organizations.error) throw new Error(organizations.error.message);
-  if (people.error) throw new Error(people.error.message);
-  if (opportunities.error) throw new Error(opportunities.error.message);
+  for (const result of [
+    organizations,
+    peopleByFirstName,
+    peopleByLastName,
+    peopleByEmail,
+    opportunities,
+  ]) {
+    if (result.error) throw new Error(result.error.message);
+  }
+
+  const peopleMap = new Map<string, (typeof peopleByFirstName.data)[number]>();
+  for (const person of [
+    ...(peopleByFirstName.data ?? []),
+    ...(peopleByLastName.data ?? []),
+    ...(peopleByEmail.data ?? []),
+  ]) {
+    peopleMap.set(person.id, person);
+  }
 
   return {
     organizations: organizations.data ?? [],
-    people: people.data ?? [],
+    people: [...peopleMap.values()].slice(0, safeLimit),
     opportunities: opportunities.data ?? [],
   };
 }

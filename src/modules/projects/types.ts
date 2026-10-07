@@ -63,4 +63,5 @@ export type ActivityEvent = {
   project_id: string | null;
   opportunity_id: string | null;
   task_id: string | null;
+  decision_id: string | null;
 };

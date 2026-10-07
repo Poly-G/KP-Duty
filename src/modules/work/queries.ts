@@ -42,7 +42,7 @@ export async function listTeamWork(): Promise<TeamWorkTask[]> {
   const { data, error } = await supabase
     .from("tasks")
     .select(
-      `${workSelect},owner:profiles(id,display_name)`,
+      `${workSelect},owner:profiles!owner_id(id,display_name)`,
     )
     .is("archived_at", null);
 

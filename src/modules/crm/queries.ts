@@ -82,7 +82,7 @@ export async function getBusinessPipeline(
     supabase
       .from("opportunities")
       .select(
-        "id,reference_code,name,business_id,pipeline_id,stage_id,organization_id,owner_id,source,source_url,priority,amount_cents,currency,next_action,next_action_at,position,metadata,organization:organizations(id,name),owner:profiles(id,display_name)",
+        "id,reference_code,name,business_id,pipeline_id,stage_id,organization_id,owner_id,source,source_url,priority,amount_cents,currency,next_action,next_action_at,position,metadata,organization:organizations(id,name),owner:profiles!owner_id(id,display_name)",
       )
       .eq("pipeline_id", pipeline.id)
       .is("archived_at", null)
@@ -146,7 +146,7 @@ export async function searchCrm(searchText: string, limit = 8) {
     supabase
       .from("opportunities")
       .select(
-        "id,reference_code,name,business_id,stage_id,owner_id,next_action,organization:organizations(id,name),business:businesses(id,slug,name),owner:profiles(id,display_name)",
+        "id,reference_code,name,business_id,stage_id,owner_id,next_action,organization:organizations(id,name),business:businesses(id,slug,name),owner:profiles!owner_id(id,display_name)",
       )
       .is("archived_at", null)
       .ilike("name", pattern)

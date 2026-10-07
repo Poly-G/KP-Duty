@@ -59,6 +59,22 @@ const writeAnnotations = {
   consequentialHint: false,
 } as const;
 
+function asNullableString(value: unknown): string | null | undefined {
+  if (value === undefined || value === null || typeof value === "string") {
+    return value;
+  }
+
+  throw new Error("Expected a string, null, or omitted value.");
+}
+
+function asNullableNumber(value: unknown): number | null | undefined {
+  if (value === undefined || value === null || typeof value === "number") {
+    return value;
+  }
+
+  throw new Error("Expected a number, null, or omitted value.");
+}
+
 export function KPSiteTools() {
   useEffect(() => {
     const modelContext = document.modelContext;
@@ -178,20 +194,20 @@ export function KPSiteTools() {
           }) =>
             createTaskForSiteTool(requestKey, {
               title,
-              businessId,
-              ownerId,
+              businessId: asNullableString(businessId),
+              ownerId: asNullableString(ownerId),
               stage,
               availability,
               priority,
-              dueAt,
-              nextAction,
-              whatThisIs,
-              whyItMatters,
-              instructions,
-              notes,
-              finishedWhen,
-              waitingOn,
-              referenceUrl,
+              dueAt: asNullableString(dueAt),
+              nextAction: asNullableString(nextAction),
+              whatThisIs: asNullableString(whatThisIs),
+              whyItMatters: asNullableString(whyItMatters),
+              instructions: asNullableString(instructions),
+              notes: asNullableString(notes),
+              finishedWhen: asNullableString(finishedWhen),
+              waitingOn: asNullableString(waitingOn),
+              referenceUrl: asNullableString(referenceUrl),
             }),
         },
         { signal: controller.signal },
@@ -248,8 +264,25 @@ export function KPSiteTools() {
             additionalProperties: false,
           },
           annotations: writeAnnotations,
-          execute: async ({ taskId, ...patch }) =>
-            updateTaskForSiteTool(taskId, patch),
+          execute: async ({
+            taskId,
+            stage,
+            availability,
+            priority,
+            dueAt,
+            nextAction,
+            waitingOn,
+            notes,
+          }) =>
+            updateTaskForSiteTool(taskId, {
+              stage,
+              availability,
+              priority,
+              dueAt: asNullableString(dueAt),
+              nextAction: asNullableString(nextAction),
+              waitingOn: asNullableString(waitingOn),
+              notes: asNullableString(notes),
+            }),
         },
         { signal: controller.signal },
       );
@@ -271,7 +304,7 @@ export function KPSiteTools() {
           },
           annotations: writeAnnotations,
           execute: async ({ taskId, ownerId }) =>
-            assignTaskForSiteTool(taskId, ownerId),
+            assignTaskForSiteTool(taskId, asNullableString(ownerId) ?? null),
         },
         { signal: controller.signal },
       );
@@ -343,8 +376,27 @@ export function KPSiteTools() {
             additionalProperties: false,
           },
           annotations: writeAnnotations,
-          execute: async ({ requestKey, name, ...input }) =>
-            createOrganizationForSiteTool(requestKey, { name, ...input }),
+          execute: async ({
+            requestKey,
+            name,
+            website,
+            publicEmail,
+            phone,
+            city,
+            state,
+            country,
+            description,
+          }) =>
+            createOrganizationForSiteTool(requestKey, {
+              name,
+              website: asNullableString(website),
+              publicEmail: asNullableString(publicEmail),
+              phone: asNullableString(phone),
+              city: asNullableString(city),
+              state: asNullableString(state),
+              country: asNullableString(country),
+              description: asNullableString(description),
+            }),
         },
         { signal: controller.signal },
       );
@@ -372,8 +424,27 @@ export function KPSiteTools() {
             additionalProperties: false,
           },
           annotations: writeAnnotations,
-          execute: async ({ requestKey, firstName, ...input }) =>
-            createPersonForSiteTool(requestKey, { firstName, ...input }),
+          execute: async ({
+            requestKey,
+            organizationId,
+            firstName,
+            lastName,
+            email,
+            phone,
+            title,
+            linkedinUrl,
+            notes,
+          }) =>
+            createPersonForSiteTool(requestKey, {
+              organizationId: asNullableString(organizationId),
+              firstName,
+              lastName: asNullableString(lastName),
+              email: asNullableString(email),
+              phone: asNullableString(phone),
+              title: asNullableString(title),
+              linkedinUrl: asNullableString(linkedinUrl),
+              notes: asNullableString(notes),
+            }),
         },
         { signal: controller.signal },
       );
@@ -414,12 +485,30 @@ export function KPSiteTools() {
             requestKey,
             name,
             businessSlug,
-            ...input
+            stageSlug,
+            organizationId,
+            ownerId,
+            source,
+            sourceUrl,
+            priority,
+            amountCents,
+            currency,
+            nextAction,
+            nextActionAt,
           }) =>
             createOpportunityForSiteTool(requestKey, {
               name,
               businessSlug,
-              ...input,
+              stageSlug: asNullableString(stageSlug),
+              organizationId: asNullableString(organizationId),
+              ownerId: asNullableString(ownerId),
+              source: asNullableString(source),
+              sourceUrl: asNullableString(sourceUrl),
+              priority,
+              amountCents: asNullableNumber(amountCents),
+              currency,
+              nextAction: asNullableString(nextAction),
+              nextActionAt: asNullableString(nextActionAt),
             }),
         },
         { signal: controller.signal },
@@ -447,8 +536,19 @@ export function KPSiteTools() {
             additionalProperties: false,
           },
           annotations: writeAnnotations,
-          execute: async ({ opportunityId, ...patch }) =>
-            updateOpportunityForSiteTool(opportunityId, patch),
+          execute: async ({
+            opportunityId,
+            stageSlug,
+            priority,
+            nextAction,
+            nextActionAt,
+          }) =>
+            updateOpportunityForSiteTool(opportunityId, {
+              stageSlug,
+              priority,
+              nextAction: asNullableString(nextAction),
+              nextActionAt: asNullableString(nextActionAt),
+            }),
         },
         { signal: controller.signal },
       );
@@ -498,12 +598,24 @@ export function KPSiteTools() {
             requestKey,
             name,
             businessSlug,
-            ...input
+            organizationId,
+            opportunityId,
+            ownerId,
+            phase,
+            nextMilestone,
+            nextMilestoneAt,
+            externalProjectUrl,
           }) =>
             createProjectForSiteTool(requestKey, {
               name,
               businessSlug,
-              ...input,
+              organizationId: asNullableString(organizationId),
+              opportunityId: asNullableString(opportunityId),
+              ownerId: asNullableString(ownerId),
+              phase: asNullableString(phase),
+              nextMilestone: asNullableString(nextMilestone),
+              nextMilestoneAt: asNullableString(nextMilestoneAt),
+              externalProjectUrl: asNullableString(externalProjectUrl),
             }),
         },
         { signal: controller.signal },
@@ -542,8 +654,21 @@ export function KPSiteTools() {
             additionalProperties: false,
           },
           annotations: writeAnnotations,
-          execute: async ({ projectId, ...patch }) =>
-            updateProjectForSiteTool(projectId, patch),
+          execute: async ({
+            projectId,
+            status,
+            phase,
+            health,
+            nextMilestone,
+            nextMilestoneAt,
+          }) =>
+            updateProjectForSiteTool(projectId, {
+              status,
+              phase: asNullableString(phase),
+              health,
+              nextMilestone: asNullableString(nextMilestone),
+              nextMilestoneAt: asNullableString(nextMilestoneAt),
+            }),
         },
         { signal: controller.signal },
       );
@@ -593,8 +718,31 @@ export function KPSiteTools() {
             additionalProperties: false,
           },
           annotations: writeAnnotations,
-          execute: async ({ requestKey, title, ...input }) =>
-            createDecisionForSiteTool(requestKey, { title, ...input }),
+          execute: async ({
+            requestKey,
+            title,
+            businessSlug,
+            ownerId,
+            mode,
+            priority,
+            domain,
+            neededBy,
+            context,
+            recommendation,
+            revisitTrigger,
+          }) =>
+            createDecisionForSiteTool(requestKey, {
+              title,
+              businessSlug: asNullableString(businessSlug),
+              ownerId: asNullableString(ownerId),
+              mode,
+              priority,
+              domain: asNullableString(domain),
+              neededBy: asNullableString(neededBy),
+              context: asNullableString(context),
+              recommendation: asNullableString(recommendation),
+              revisitTrigger: asNullableString(revisitTrigger),
+            }),
         },
         { signal: controller.signal },
       );
@@ -652,7 +800,7 @@ export function KPSiteTools() {
             resolveDecisionForSiteTool(
               decisionId,
               finalDecision,
-              effectiveDate,
+              asNullableString(effectiveDate),
             ),
         },
         { signal: controller.signal },

@@ -29,3 +29,30 @@ export async function requireCurrentIdentity() {
 
   return { user, profile };
 }
+
+export async function requireActiveIdentity() {
+  const identity = await requireCurrentIdentity();
+
+  if (!identity.profile) {
+    throw new Error("KP Duty profile is not configured.");
+  }
+
+  if (identity.profile.status !== "active") {
+    throw new Error("KP Duty account is disabled.");
+  }
+
+  return {
+    user: identity.user,
+    profile: identity.profile,
+  };
+}
+
+export async function requireAdminIdentity() {
+  const identity = await requireActiveIdentity();
+
+  if (identity.profile.role !== "admin") {
+    throw new Error("Admin permission required.");
+  }
+
+  return identity;
+}

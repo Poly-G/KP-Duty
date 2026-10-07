@@ -1,7 +1,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { passwordRecoveryUrl } from '../src/lib/auth/urls.ts';
+import { passwordRecoveryUrl, authCallbackUrl } from '../src/lib/auth/urls.ts';
+
+test('Render callback uses the public URL rather than internal localhost for success and failure', () => {
+  for (const path of ['/account/password', '/login?error=expired']) {
+    assert.equal(authCallbackUrl(path, 'https://localhost:10000/auth/callback', 'https://kp-duty-webmcp-test.onrender.com').href,
+      `https://kp-duty-webmcp-test.onrender.com${path}`);
+  }
+});
+test('production and local callbacks preserve their request origins', () => {
+  for (const origin of ['https://kp-duty.vercel.app', 'http://localhost:3000']) {
+    assert.equal(authCallbackUrl('/account/password', `${origin}/auth/callback`).href, `${origin}/account/password`);
+  }
+});
+test('callback next cannot redirect outside the app', () => {
+  for (const path of [null, 'https://evil.example', '//evil.example', '/\\\\evil.example']) {
+    assert.equal(authCallbackUrl(path, 'https://app.example/auth/callback').href, 'https://app.example/');
+  }
+});
 
 const recoveryPath = '/auth/callback?next=/account/password';
 test('Render recovery stays on Render even with the production site URL', () => {

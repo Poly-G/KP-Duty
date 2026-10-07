@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "node --test tests/*.test.mjs",
+    "test": "node --test tests/*.test.mjs && node tests/database/client-delivery.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -33,6 +33,7 @@
     "eslint-config-next": "^16.0.0",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.9.0",
-    "webmcp-types": "0.1.10"
+    "webmcp-types": "0.1.10",
+    "@electric-sql/pglite": "0.3.14"
   }
 }

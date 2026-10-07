@@ -14,6 +14,7 @@ export type ProjectHealth =
 
 export type ProjectRecord = {
   id: string;
+  delivery: {id:string} | null;
   name: string;
   status: ProjectStatus;
   phase: string | null;

@@ -17,6 +17,7 @@ export default async function BusinessWorkspacePage({ params }: { params: Promis
     <div className="mb-7 flex flex-wrap gap-3">
       <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href={`/crm/${business}`}>Open sales pipeline · {pipeline.opportunities.length}</Link>
       <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href="/projects">Manage projects · {projects.length}</Link>
+      <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href={`/businesses/${business}/preview`}>Try a sample project</Link>
     </div>
     <section className="mb-7">
       <h2 className="mb-3 font-medium">Companies & clients</h2>

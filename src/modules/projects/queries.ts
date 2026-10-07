@@ -9,7 +9,7 @@ export async function listProjects(): Promise<ProjectRecord[]> {
   const { data, error } = await supabase
     .from("projects")
     .select(
-      "id,name,status,phase,health,next_milestone,next_milestone_at,source_system,external_record_id,external_project_url,sync_status,last_synced_at,business:businesses(id,slug,name),organization:organizations(id,name),owner:profiles!owner_id(id,display_name)",
+      "id,delivery:client_engagements(id),name,status,phase,health,next_milestone,next_milestone_at,source_system,external_record_id,external_project_url,sync_status,last_synced_at,business:businesses(id,slug,name),organization:organizations(id,name),owner:profiles!owner_id(id,display_name)",
     )
     .is("archived_at", null)
     .neq("status", "cancelled")

@@ -5,7 +5,7 @@ export async function GET() {
  const {profile}=await requireActiveIdentity();
  if(profile.role!=="admin")return Response.json({error:"Admin permission required."},{status:403});
  const db=await createClient();
- const tables=["businesses","tasks","organizations","people","relationships","pipelines","pipeline_stages","opportunities","opportunity_people","projects","decisions","chat_messages","knowledge_documents","knowledge_revisions","activity_events","external_links"];
+ const tables=["businesses","tasks","organizations","people","relationships","pipelines","pipeline_stages","opportunities","opportunity_people","projects","client_engagements","client_engagement_history","decisions","chat_messages","knowledge_documents","knowledge_revisions","activity_events","external_links"];
  try {
   const entries=await Promise.all(tables.map(async table=>{
    const rows:unknown[]=[];

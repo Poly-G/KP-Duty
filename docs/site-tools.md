@@ -63,6 +63,18 @@ An `AbortController` owns both registrations so React can unregister them when t
 
 The registration is feature-detected and becomes a no-op in browsers without WebMCP support. KP Duty remains fully usable without an agent.
 
+## ChatGPT test prerequisites
+
+Current OpenAI Site Tools documentation requires:
+
+- the current ChatGPT desktop app;
+- the built-in browser;
+- Site Tools enabled in browser permissions;
+- ChatGPT Work or Codex;
+- a Site-Tools-capable model such as GPT-5.6 Sol or GPT-6 Sol.
+
+GPT-5.6 Luna currently has WebMCP disabled. Availability is also subject to rollout, so absence of Site Tools in the correct browser/model should be treated as a product-availability check before debugging KP code.
+
 ## Initial acceptance test
 
 Run this only after a deployment supports Site Tools.

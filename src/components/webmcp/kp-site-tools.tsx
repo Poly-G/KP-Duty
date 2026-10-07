@@ -35,10 +35,11 @@ export function KPSiteTools() {
       return;
     }
 
+    const registerTool = modelContext.registerTool.bind(modelContext);
     const controller = new AbortController();
 
     async function registerTools() {
-      await modelContext.registerTool(
+      await registerTool(
         {
           name: "get_my_work",
           title: "Get my KP work",
@@ -55,7 +56,7 @@ export function KPSiteTools() {
         { signal: controller.signal },
       );
 
-      await modelContext.registerTool(
+      await registerTool(
         {
           name: "complete_task",
           title: "Complete KP task",

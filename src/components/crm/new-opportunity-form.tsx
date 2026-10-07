@@ -12,6 +12,10 @@ export function NewOpportunityForm({
   board: BusinessPipeline;
   organizations: Organization[];
 }) {
+  if (!board.business.is_active) {
+    return <p className="mb-6 text-sm text-[var(--muted)]">New opportunities are paused while this business is parked.</p>;
+  }
+
   const firstStage = board.stages[0];
   if (!firstStage) return null;
 

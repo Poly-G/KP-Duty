@@ -3,10 +3,11 @@
 import { useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
-export function ActionForm({ action, children, className }: {
+export function ActionForm({ action, children, className, errorMessage }: {
   action: (data: FormData) => Promise<void>;
   children: ReactNode;
   className?: string;
+  errorMessage?: string;
 }) {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -36,7 +37,7 @@ export function ActionForm({ action, children, className }: {
           setSaved(true);
           router.refresh();
         } catch {
-          setError("We couldn’t save this. Check the fields and try again.");
+          setError(errorMessage || "We couldn’t save this. Check the fields and try again.");
         } finally {
           submitting.current = false;
         }

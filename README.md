@@ -50,6 +50,15 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
+Password recovery uses the browser request's current origin, so requests from
+Render return to Render and production requests return to production.
+`NEXT_PUBLIC_SITE_URL` is the fallback for requests without an Origin header.
+Forgot password and other in-app auth links use relative routes.
+In Supabase Auth URL Configuration, allow each deployment's
+`/auth/callback?next=/account/password` URL (including Render and localhost);
+keep the production Site URL. Recovery email templates must honor the supplied
+redirect URL rather than force the Site URL.
+
 Then:
 
 ```bash

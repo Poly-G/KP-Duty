@@ -1,8 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { passwordRecoveryUrl } from "@/lib/auth/urls";
 
 const emailSchema = z.string().email();
 const loginSchema = z.object({
@@ -84,12 +86,13 @@ export async function requestPasswordReset(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
-    "http://localhost:3000";
+  const requestHeaders = await headers();
 
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: `${siteUrl}/auth/callback?next=/account/password`,
+    redirectTo: passwordRecoveryUrl(
+      requestHeaders.get("origin"),
+      process.env.NEXT_PUBLIC_SITE_URL,
+    ),
   });
 
   if (error) {

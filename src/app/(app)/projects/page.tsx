@@ -25,7 +25,7 @@ export default async function ProjectsPage() {
         organizations={options.organizations}
       />
 
-      <ProjectGrid initialProjects={projects} />
+      <ProjectGrid key={JSON.stringify(projects)} initialProjects={projects} />
     </>
   );
 }

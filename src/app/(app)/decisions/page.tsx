@@ -21,7 +21,7 @@ export default async function DecisionsPage() {
       />
 
       <NewDecisionForm businesses={businesses} />
-      <DecisionList initialDecisions={decisions} />
+      <DecisionList key={JSON.stringify(decisions)} initialDecisions={decisions} />
     </>
   );
 }

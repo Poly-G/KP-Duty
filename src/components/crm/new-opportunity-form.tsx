@@ -1,3 +1,4 @@
+import { ActionForm } from "@/components/action-form";
 import { createOpportunity } from "@/modules/crm/actions";
 import type {
   BusinessPipeline,
@@ -19,7 +20,7 @@ export function NewOpportunityForm({
       <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium">
         + Add opportunity
       </summary>
-      <form
+      <ActionForm
         action={createOpportunity}
         className="grid gap-3 border-t border-[var(--border)] p-4 sm:grid-cols-2"
       >
@@ -90,7 +91,7 @@ export function NewOpportunityForm({
             Add to {firstStage.name}
           </button>
         </div>
-      </form>
+      </ActionForm>
     </details>
   );
 }

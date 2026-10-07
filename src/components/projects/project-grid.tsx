@@ -137,9 +137,12 @@ export function ProjectGrid({
 }) {
   const [projects, setProjects] = useState(initialProjects);
   const [selected, setSelected] = useState<ProjectRecord | null>(null);
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
+  const [saveError, setSaveError] = useState("");
 
   const handleStatus = (project: ProjectRecord, status: ProjectStatus) => {
+    if (isPending) return;
+    setSaveError("");
     const nextHealth = status === "complete" ? "complete" : project.health;
     const nextProject = { ...project, status, health: nextHealth } as ProjectRecord;
 
@@ -152,8 +155,12 @@ export function ProjectGrid({
 
     startTransition(async () => {
       try {
-        await setProjectStatus(project.id, status);
+        const saved = await setProjectStatus(project.id, status);
+        const confirmed = { ...project, ...saved };
+        setProjects((current) => current.map((candidate) => candidate.id === project.id ? confirmed : candidate));
+        setSelected(confirmed);
       } catch {
+        setSaveError("The change couldn’t be saved. Please try again.");
         setProjects(initialProjects);
         setSelected(project);
       }
@@ -169,7 +176,9 @@ export function ProjectGrid({
   }
 
   return (
-    <>
+    <fieldset disabled={isPending} className="contents">
+      {isPending ? <p role="status">Saving…</p> : null}
+      {saveError ? <p role="alert" className="text-sm text-red-700">{saveError}</p> : null}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {projects.map((project) => (
           <button
@@ -211,6 +220,6 @@ export function ProjectGrid({
           onStatus={(status) => handleStatus(selected, status)}
         />
       ) : null}
-    </>
+    </fieldset>
   );
 }

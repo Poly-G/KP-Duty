@@ -1,3 +1,4 @@
+import { ActionForm } from "@/components/action-form";
 import { createDecision } from "@/modules/decisions/actions";
 
 export function NewDecisionForm({
@@ -10,7 +11,7 @@ export function NewDecisionForm({
       <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium">
         + Add decision
       </summary>
-      <form
+      <ActionForm
         action={createDecision}
         className="grid gap-3 border-t border-[var(--border)] p-4 sm:grid-cols-2"
       >
@@ -96,7 +97,7 @@ export function NewDecisionForm({
             Add decision
           </button>
         </div>
-      </form>
+      </ActionForm>
     </details>
   );
 }

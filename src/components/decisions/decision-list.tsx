@@ -1,5 +1,7 @@
 "use client";
 
+import { ActionForm } from "@/components/action-form";
+
 import { X } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import {
@@ -105,7 +107,7 @@ function DecisionDetail({
                 )}
               </div>
 
-              <form action={resolveDecision} className="border-t border-[var(--border)] pt-5">
+              <ActionForm action={resolveDecision} className="border-t border-[var(--border)] pt-5">
                 <input type="hidden" name="decision_id" value={decision.id} />
                 <label className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                   Resolve with
@@ -123,7 +125,7 @@ function DecisionDetail({
                 >
                   Resolve decision
                 </button>
-              </form>
+              </ActionForm>
             </>
           ) : null}
         </div>
@@ -140,7 +142,8 @@ export function DecisionList({
   const [decisions, setDecisions] = useState(initialDecisions);
   const [selected, setSelected] = useState<DecisionRecord | null>(null);
   const [showResolved, setShowResolved] = useState(false);
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
+  const [saveError, setSaveError] = useState("");
 
   const active = useMemo(
     () =>
@@ -161,6 +164,8 @@ export function DecisionList({
   );
 
   const handleStatus = (decision: DecisionRecord, status: DecisionStatus) => {
+    if (isPending) return;
+    setSaveError("");
     const nextDecision = { ...decision, status };
     setDecisions((current) =>
       current.map((candidate) =>
@@ -173,6 +178,7 @@ export function DecisionList({
       try {
         await setDecisionStatus(decision.id, status);
       } catch {
+        setSaveError("The change couldn’t be saved. Please try again.");
         setDecisions(initialDecisions);
         setSelected(decision);
       }
@@ -180,7 +186,9 @@ export function DecisionList({
   };
 
   return (
-    <>
+    <fieldset disabled={isPending} className="contents">
+      {isPending ? <p role="status">Saving…</p> : null}
+      {saveError ? <p role="alert" className="text-sm text-red-700">{saveError}</p> : null}
       {active.length ? (
         <div className="grid gap-3 md:grid-cols-2">
           {active.map((decision) => (
@@ -254,6 +262,6 @@ export function DecisionList({
           onStatus={(status) => handleStatus(selected, status)}
         />
       ) : null}
-    </>
+    </fieldset>
   );
 }

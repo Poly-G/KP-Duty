@@ -1,3 +1,4 @@
+import { ActionForm } from "@/components/action-form";
 import { createProject } from "@/modules/projects/actions";
 
 type Option = {
@@ -17,7 +18,7 @@ export function NewProjectForm({
       <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium">
         + Add project
       </summary>
-      <form
+      <ActionForm
         action={createProject}
         className="grid gap-3 border-t border-[var(--border)] p-4 sm:grid-cols-2"
       >
@@ -110,7 +111,7 @@ export function NewProjectForm({
             Add project
           </button>
         </div>
-      </form>
+      </ActionForm>
     </details>
   );
 }

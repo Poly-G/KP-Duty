@@ -12,7 +12,7 @@ export default async function WorkPage() {
         title="What are you doing?"
         description="Only actionable To Do and Working items stay on the main board. Finished work disappears; Waiting and Blocked stay separate."
       />
-      <WorkBoard initialTasks={tasks} />
+      <WorkBoard key={JSON.stringify(tasks)} initialTasks={tasks} />
     </>
   );
 }

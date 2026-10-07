@@ -268,7 +268,8 @@ export function OpportunityBoard({
 }) {
   const [opportunities, setOpportunities] = useState(initialOpportunities);
   const [selected, setSelected] = useState<Opportunity | null>(null);
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
+  const [saveError, setSaveError] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -288,6 +289,8 @@ export function OpportunityBoard({
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
+    if (isPending) return;
+    setSaveError("");
     const opportunityId = String(event.active.id);
     const over = event.over;
     if (!over) return;
@@ -325,13 +328,16 @@ export function OpportunityBoard({
           businessSlug,
         );
       } catch {
+        setSaveError("The change couldn’t be saved. Please try again.");
         setOpportunities(initialOpportunities);
       }
     });
   };
 
   return (
-    <>
+    <fieldset disabled={isPending} className="contents">
+      {isPending ? <p role="status">Saving…</p> : null}
+      {saveError ? <p role="alert" className="text-sm text-red-700">{saveError}</p> : null}
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-4">
           {stages.map((stage) => (
@@ -351,6 +357,6 @@ export function OpportunityBoard({
           onClose={() => setSelected(null)}
         />
       ) : null}
-    </>
+    </fieldset>
   );
 }

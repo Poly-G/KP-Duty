@@ -38,7 +38,7 @@ export default async function BusinessCrmPage({
 
       <NewOpportunityForm board={board} organizations={organizations} />
 
-      <OpportunityBoard
+      <OpportunityBoard key={JSON.stringify(board.opportunities)}
         businessSlug={board.business.slug}
         stages={board.stages}
         initialOpportunities={board.opportunities}

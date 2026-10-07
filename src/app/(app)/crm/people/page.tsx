@@ -1,3 +1,4 @@
+import { ActionForm } from "@/components/action-form";
 import { createPerson } from "@/modules/crm/actions";
 import { listOrganizations, listPeople } from "@/modules/crm/queries";
 import { PageHeading } from "@/components/page-heading";
@@ -20,7 +21,7 @@ export default async function PeoplePage() {
         <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium">
           + Add person
         </summary>
-        <form
+        <ActionForm
           action={createPerson}
           className="grid gap-3 border-t border-[var(--border)] p-4 sm:grid-cols-2"
         >
@@ -77,7 +78,7 @@ export default async function PeoplePage() {
               Add person
             </button>
           </div>
-        </form>
+        </ActionForm>
       </details>
 
       {people.length ? (

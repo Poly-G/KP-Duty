@@ -1,3 +1,4 @@
+import { ActionForm } from "@/components/action-form";
 import { ExternalLink } from "lucide-react";
 import { createOrganization } from "@/modules/crm/actions";
 import { listOrganizations } from "@/modules/crm/queries";
@@ -18,7 +19,7 @@ export default async function CompaniesPage() {
         <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium">
           + Add company
         </summary>
-        <form
+        <ActionForm
           action={createOrganization}
           className="grid gap-3 border-t border-[var(--border)] p-4 sm:grid-cols-2"
         >
@@ -52,7 +53,7 @@ export default async function CompaniesPage() {
               Add company
             </button>
           </div>
-        </form>
+        </ActionForm>
       </details>
 
       {organizations.length ? (

@@ -315,7 +315,8 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
   const [tasks, setTasks] = useState(initialTasks);
   const [selectedTask, setSelectedTask] = useState<WorkTask | null>(null);
   const [showFinished, setShowFinished] = useState(false);
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
+  const [saveError, setSaveError] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -363,6 +364,8 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
     actionable.filter((task) => task.stage === stage);
 
   const handleFinish = (task: WorkTask) => {
+    if (isPending) return;
+    setSaveError("");
     setTasks((current) =>
       current.map((candidate) =>
         candidate.id === task.id
@@ -377,12 +380,15 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
       try {
         await completeTask(task.id);
       } catch {
+        setSaveError("The change couldn’t be saved. Please try again.");
         setTasks(initialTasks);
       }
     });
   };
 
   const handleReopen = (task: WorkTask) => {
+    if (isPending) return;
+    setSaveError("");
     setTasks((current) =>
       current.map((candidate) =>
         candidate.id === task.id
@@ -395,12 +401,15 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
       try {
         await reopenTask(task.id);
       } catch {
+        setSaveError("The change couldn’t be saved. Please try again.");
         setTasks(initialTasks);
       }
     });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    if (isPending) return;
+    setSaveError("");
     const taskId = String(event.active.id);
     const over = event.over;
     if (!over) return;
@@ -436,13 +445,16 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
       try {
         await setTaskStage(task.id, destinationStage);
       } catch {
+        setSaveError("The change couldn’t be saved. Please try again.");
         setTasks(initialTasks);
       }
     });
   };
 
   return (
-    <>
+    <fieldset disabled={isPending} className="contents">
+      {isPending ? <p role="status">Saving…</p> : null}
+      {saveError ? <p role="alert" className="text-sm text-red-700">{saveError}</p> : null}
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="grid gap-4 lg:grid-cols-2">
           {visibleStages.map((stage) => (
@@ -557,6 +569,6 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
       {selectedTask ? (
         <TaskDetail task={selectedTask} onClose={() => setSelectedTask(null)} />
       ) : null}
-    </>
+    </fieldset>
   );
 }

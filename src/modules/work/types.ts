@@ -28,6 +28,13 @@ export type WorkTask = {
   } | null;
 };
 
+export type TeamWorkTask = WorkTask & {
+  owner: {
+    id: string;
+    display_name: string | null;
+  } | null;
+};
+
 export const priorityRank: Record<TaskPriority, number> = {
   critical: 0,
   high: 1,
@@ -35,7 +42,7 @@ export const priorityRank: Record<TaskPriority, number> = {
   low: 3,
 };
 
-export function sortWorkTasks(tasks: WorkTask[]) {
+export function sortWorkTasks<T extends WorkTask>(tasks: T[]) {
   return [...tasks].sort((a, b) => {
     const byPriority = priorityRank[a.priority] - priorityRank[b.priority];
     if (byPriority !== 0) return byPriority;

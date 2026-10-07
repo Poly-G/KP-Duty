@@ -1,7 +1,9 @@
+import { requireActiveIdentity } from "@/lib/auth/current-user";
 import { createClient } from "@/lib/supabase/server";
 import type { DecisionRecord } from "./types";
 
 export async function listDecisions(): Promise<DecisionRecord[]> {
+  await requireActiveIdentity();
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -11,11 +13,13 @@ export async function listDecisions(): Promise<DecisionRecord[]> {
     )
     .order("created_at", { ascending: false });
 
-  if (error) throw new Error(`Unable to load decisions: ${error.message}`);
+  if (error)
+    throw new Error(`Unable to load decisions: ${error.message}`);
   return (data ?? []) as unknown as DecisionRecord[];
 }
 
 export async function listDecisionBusinesses() {
+  await requireActiveIdentity();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("businesses")

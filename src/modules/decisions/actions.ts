@@ -2,67 +2,72 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireCurrentIdentity } from "@/lib/auth/current-user";
 import { createClient } from "@/lib/supabase/server";
+import {
+  createDecisionRecord,
+  resolveDecisionRecord,
+  setDecisionStatusRecord,
+} from "./service";
 
 const uuid = z.string().uuid();
-const statusSchema = z.enum(["open", "discussing", "deferred", "resolved", "superseded"]);
 
 const optionalText = (value: FormDataEntryValue | null) => {
   const text = typeof value === "string" ? value.trim() : "";
   return text || null;
 };
 
-export async function createDecision(formData: FormData) {
-  const { user } = await requireCurrentIdentity();
-  const supabase = await createClient();
-
-  const title = z.string().trim().min(1).parse(formData.get("title"));
-  const businessRaw = optionalText(formData.get("business_id"));
-  const businessId = businessRaw ? uuid.parse(businessRaw) : null;
-  const mode = z.enum(["individual", "joint"]).parse(formData.get("mode"));
-  const domain = optionalText(formData.get("domain"));
-  const context = optionalText(formData.get("context"));
-  const recommendation = optionalText(formData.get("recommendation"));
-  const neededBy = optionalText(formData.get("needed_by"));
-
-  const { error } = await supabase.from("decisions").insert({
-    title,
-    business_id: businessId,
-    mode,
-    domain,
-    context,
-    recommendation,
-    needed_by: neededBy,
-    owner_id: user.id,
-  });
-
-  if (error) throw new Error(error.message);
+function refreshDecisions() {
   revalidatePath("/decisions");
   revalidatePath("/");
+}
+
+export async function createDecision(formData: FormData) {
+  const businessRaw = optionalText(formData.get("business_id"));
+  let businessSlug: string | null = null;
+
+  if (businessRaw) {
+    const businessId = uuid.parse(businessRaw);
+    const supabase = await createClient();
+    const { data: business, error } = await supabase
+      .from("businesses")
+      .select("slug")
+      .eq("id", businessId)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!business) throw new Error("Selected business was not found.");
+    businessSlug = business.slug;
+  }
+
+  const result = await createDecisionRecord({
+    source: "ui",
+    requestKey: crypto.randomUUID(),
+    input: {
+      title: z.string().trim().min(1).parse(formData.get("title")),
+      businessSlug,
+      mode: z.enum(["individual", "joint"]).parse(formData.get("mode")),
+      domain: optionalText(formData.get("domain")),
+      context: optionalText(formData.get("context")),
+      recommendation: optionalText(formData.get("recommendation")),
+      neededBy: optionalText(formData.get("needed_by")),
+    },
+  });
+
+  refreshDecisions();
+  void result;
 }
 
 export async function setDecisionStatus(decisionId: string, status: string) {
-  await requireCurrentIdentity();
-  const supabase = await createClient();
+  const nextStatus = z
+    .enum(["open", "discussing", "deferred", "superseded"])
+    .parse(status);
 
-  const id = uuid.parse(decisionId);
-  const nextStatus = statusSchema.parse(status);
-
-  const { error } = await supabase
-    .from("decisions")
-    .update({ status: nextStatus })
-    .eq("id", id);
-
-  if (error) throw new Error(error.message);
-  revalidatePath("/decisions");
-  revalidatePath("/");
+  const result = await setDecisionStatusRecord(decisionId, nextStatus);
+  refreshDecisions();
+  return result;
 }
 
 export async function resolveDecision(formData: FormData) {
-  await requireCurrentIdentity();
-  const supabase = await createClient();
-
   const id = uuid.parse(formData.get("decision_id"));
   const finalDecision = z
     .string()
@@ -70,16 +75,7 @@ export async function resolveDecision(formData: FormData) {
     .min(1, "A resolved decision needs an outcome.")
     .parse(formData.get("final_decision"));
 
-  const { error } = await supabase
-    .from("decisions")
-    .update({
-      status: "resolved",
-      final_decision: finalDecision,
-      effective_date: new Date().toISOString().slice(0, 10),
-    })
-    .eq("id", id);
-
-  if (error) throw new Error(error.message);
-  revalidatePath("/decisions");
-  revalidatePath("/");
+  const result = await resolveDecisionRecord(id, finalDecision);
+  refreshDecisions();
+  void result;
 }

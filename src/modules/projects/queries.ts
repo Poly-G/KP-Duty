@@ -1,7 +1,9 @@
+import { requireActiveIdentity } from "@/lib/auth/current-user";
 import { createClient } from "@/lib/supabase/server";
 import type { ActivityEvent, ProjectRecord } from "./types";
 
 export async function listProjects(): Promise<ProjectRecord[]> {
+  await requireActiveIdentity();
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -20,32 +22,37 @@ export async function listProjects(): Promise<ProjectRecord[]> {
 export async function listRecentActivity(
   limit = 12,
 ): Promise<ActivityEvent[]> {
+  await requireActiveIdentity();
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("activity_events")
     .select(
-      "id,event_type,source,summary,occurred_at,metadata,project_id,opportunity_id,task_id,business:businesses(id,slug,name),actor:profiles(id,display_name),organization:organizations(id,name)",
+      "id,event_type,source,summary,occurred_at,metadata,project_id,opportunity_id,task_id,decision_id,business:businesses(id,slug,name),actor:profiles(id,display_name),organization:organizations(id,name)",
     )
     .order("occurred_at", { ascending: false })
     .limit(limit);
 
-  if (error) throw new Error(`Unable to load activity: ${error.message}`);
+  if (error)
+    throw new Error(`Unable to load activity: ${error.message}`);
   return (data ?? []) as unknown as ActivityEvent[];
 }
 
 export async function listProjectFormOptions() {
+  await requireActiveIdentity();
   const supabase = await createClient();
 
-  const [{ data: businesses, error: businessError }, { data: organizations, error: orgError }] =
-    await Promise.all([
-      supabase.from("businesses").select("id,slug,name,is_active").order("name"),
-      supabase
-        .from("organizations")
-        .select("id,name")
-        .is("archived_at", null)
-        .order("name"),
-    ]);
+  const [
+    { data: businesses, error: businessError },
+    { data: organizations, error: orgError },
+  ] = await Promise.all([
+    supabase.from("businesses").select("id,slug,name,is_active").order("name"),
+    supabase
+      .from("organizations")
+      .select("id,name")
+      .is("archived_at", null)
+      .order("name"),
+  ]);
 
   if (businessError) throw new Error(businessError.message);
   if (orgError) throw new Error(orgError.message);

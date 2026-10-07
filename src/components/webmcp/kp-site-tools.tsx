@@ -4,27 +4,59 @@
 
 import { useEffect } from "react";
 import {
+  addNoteForSiteTool,
+  assignTaskForSiteTool,
   completeTaskForSiteTool,
+  createDecisionForSiteTool,
+  createOpportunityForSiteTool,
+  createOrganizationForSiteTool,
+  createPersonForSiteTool,
+  createProjectForSiteTool,
+  createTaskForSiteTool,
+  getDecisionsForSiteTool,
   getMyWorkForSiteTool,
+  getPipelineForSiteTool,
+  getProjectsForSiteTool,
+  getRecentActivityForSiteTool,
+  getTeamMembersForSiteTool,
+  getTeamWorkForSiteTool,
+  resolveDecisionForSiteTool,
+  searchCrmForSiteTool,
+  updateDecisionStatusForSiteTool,
+  updateOpportunityForSiteTool,
+  updateProjectForSiteTool,
+  updateTaskForSiteTool,
 } from "@/modules/site-tools/actions";
 
-const noInputSchema = {
-  type: "object",
-  properties: {},
-  additionalProperties: false,
+const uuidProperty = {
+  type: "string",
+  description: "KP Duty UUID.",
 } as const;
 
-const completeTaskSchema = {
-  type: "object",
-  properties: {
-    taskId: {
-      type: "string",
-      description:
-        "The KP Duty UUID of the task to finish. Use an ID returned by get_my_work.",
-    },
-  },
-  required: ["taskId"],
-  additionalProperties: false,
+const requestKeyProperty = {
+  type: "string",
+  description:
+    "A unique stable request key for this user-requested creation. Generate a new UUID-like value for a new request and reuse the same value if retrying the same request.",
+} as const;
+
+const nullableString = {
+  anyOf: [{ type: "string" }, { type: "null" }],
+} as const;
+
+const nullableUuid = {
+  anyOf: [{ type: "string" }, { type: "null" }],
+} as const;
+
+const readAnnotations = {
+  readOnlyHint: true,
+  untrustedContentHint: true,
+  consequentialHint: false,
+} as const;
+
+const writeAnnotations = {
+  readOnlyHint: false,
+  untrustedContentHint: true,
+  consequentialHint: false,
 } as const;
 
 export function KPSiteTools() {
@@ -44,13 +76,13 @@ export function KPSiteTools() {
           name: "get_my_work",
           title: "Get my KP work",
           description:
-            "Read the current signed-in KP Duty user's visible work queue. Team members receive their own tasks; admins can also see unassigned work surfaced by the KP Work view. Use this before modifying a task so you have the current KP task ID and state.",
-          inputSchema: noInputSchema,
-          annotations: {
-            readOnlyHint: true,
-            untrustedContentHint: true,
-            consequentialHint: false,
+            "Read the signed-in KP Duty user's current work queue. Use this to answer what the current person should work on and to obtain task IDs before updates.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            additionalProperties: false,
           },
+          annotations: readAnnotations,
           execute: async () => getMyWorkForSiteTool(),
         },
         { signal: controller.signal },
@@ -58,17 +90,637 @@ export function KPSiteTools() {
 
       await registerTool(
         {
-          name: "complete_task",
-          title: "Complete KP task",
+          name: "get_team_work",
+          title: "Get team work",
           description:
-            "Mark one task owned by the current signed-in KP Duty user as finished. This changes KP Duty state and records the authenticated user through the existing Supabase session and activity triggers. The task can be reopened later in KP Duty.",
-          inputSchema: completeTaskSchema,
-          annotations: {
-            readOnlyHint: false,
-            untrustedContentHint: true,
-            consequentialHint: false,
+            "Admin-only view of KP Duty work across Poly, Keshia, and unassigned tasks. Use when the signed-in admin asks what another teammate owns or what is unassigned.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            additionalProperties: false,
           },
+          annotations: readAnnotations,
+          execute: async () => getTeamWorkForSiteTool(),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "get_team_members",
+          title: "Get KP team members",
+          description:
+            "Admin-only list of active KP Duty team members and IDs. Use before assigning a task to someone when their profile ID is not already known.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            additionalProperties: false,
+          },
+          annotations: readAnnotations,
+          execute: async () => getTeamMembersForSiteTool(),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "create_task",
+          title: "Create KP task",
+          description:
+            "Create a KP Duty task. By default it belongs to the signed-in user. Only an admin can assign it to another person or create it unassigned. This action is retry-safe when the same requestKey is reused.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              requestKey: requestKeyProperty,
+              title: { type: "string" },
+              businessId: nullableUuid,
+              ownerId: nullableUuid,
+              stage: { type: "string", enum: ["todo", "working"] },
+              availability: {
+                type: "string",
+                enum: ["yes", "waiting", "blocked", "parked"],
+              },
+              priority: {
+                type: "string",
+                enum: ["critical", "high", "normal", "low"],
+              },
+              dueAt: nullableString,
+              nextAction: nullableString,
+              whatThisIs: nullableString,
+              whyItMatters: nullableString,
+              instructions: nullableString,
+              notes: nullableString,
+              finishedWhen: nullableString,
+              waitingOn: nullableString,
+              referenceUrl: nullableString,
+            },
+            required: ["requestKey", "title"],
+            additionalProperties: false,
+          },
+          annotations: writeAnnotations,
+          execute: async ({
+            requestKey,
+            title,
+            businessId,
+            ownerId,
+            stage,
+            availability,
+            priority,
+            dueAt,
+            nextAction,
+            whatThisIs,
+            whyItMatters,
+            instructions,
+            notes,
+            finishedWhen,
+            waitingOn,
+            referenceUrl,
+          }) =>
+            createTaskForSiteTool(requestKey, {
+              title,
+              businessId,
+              ownerId,
+              stage,
+              availability,
+              priority,
+              dueAt,
+              nextAction,
+              whatThisIs,
+              whyItMatters,
+              instructions,
+              notes,
+              finishedWhen,
+              waitingOn,
+              referenceUrl,
+            }),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "complete_task",
+          title: "Complete my KP task",
+          description:
+            "Mark one task owned by the signed-in KP Duty user as finished. It cannot complete another person's task.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              taskId: uuidProperty,
+            },
+            required: ["taskId"],
+            additionalProperties: false,
+          },
+          annotations: writeAnnotations,
           execute: async ({ taskId }) => completeTaskForSiteTool(taskId),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "update_task",
+          title: "Update my KP task",
+          description:
+            "Update state or working details on a task owned by the signed-in user. Use assign_task separately for ownership changes.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              taskId: uuidProperty,
+              stage: {
+                type: "string",
+                enum: ["todo", "working", "finished"],
+              },
+              availability: {
+                type: "string",
+                enum: ["yes", "waiting", "blocked", "parked"],
+              },
+              priority: {
+                type: "string",
+                enum: ["critical", "high", "normal", "low"],
+              },
+              dueAt: nullableString,
+              nextAction: nullableString,
+              waitingOn: nullableString,
+              notes: nullableString,
+            },
+            required: ["taskId"],
+            additionalProperties: false,
+          },
+          annotations: writeAnnotations,
+          execute: async ({ taskId, ...patch }) =>
+            updateTaskForSiteTool(taskId, patch),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "assign_task",
+          title: "Assign KP task",
+          description:
+            "Admin-only task ownership change. Use get_team_members first when the desired owner's profile ID is unknown. Set ownerId to null to leave the task unassigned.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              taskId: uuidProperty,
+              ownerId: nullableUuid,
+            },
+            required: ["taskId", "ownerId"],
+            additionalProperties: false,
+          },
+          annotations: writeAnnotations,
+          execute: async ({ taskId, ownerId }) =>
+            assignTaskForSiteTool(taskId, ownerId),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "search_crm",
+          title: "Search KP CRM",
+          description:
+            "Search KP organizations, people, and opportunities by name or email. Use before creating a record when duplication is possible and before updates when IDs are unknown.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              query: {
+                type: "string",
+                description: "At least two characters of a name or email.",
+              },
+            },
+            required: ["query"],
+            additionalProperties: false,
+          },
+          annotations: readAnnotations,
+          execute: async ({ query }) => searchCrmForSiteTool(query),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "get_pipeline",
+          title: "Get business pipeline",
+          description:
+            "Get the default CRM pipeline, stages, and opportunities for a KP business. businessSlug is solta, snd, or nex.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              businessSlug: { type: "string", enum: ["solta", "snd", "nex"] },
+            },
+            required: ["businessSlug"],
+            additionalProperties: false,
+          },
+          annotations: readAnnotations,
+          execute: async ({ businessSlug }) =>
+            getPipelineForSiteTool(businessSlug),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "create_organization",
+          title: "Create CRM organization",
+          description:
+            "Create a company or organization in the shared KP CRM. Search first if duplication is possible. Retry-safe when the same requestKey is reused.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              requestKey: requestKeyProperty,
+              name: { type: "string" },
+              website: nullableString,
+              publicEmail: nullableString,
+              phone: nullableString,
+              city: nullableString,
+              state: nullableString,
+              country: nullableString,
+              description: nullableString,
+            },
+            required: ["requestKey", "name"],
+            additionalProperties: false,
+          },
+          annotations: writeAnnotations,
+          execute: async ({ requestKey, name, ...input }) =>
+            createOrganizationForSiteTool(requestKey, { name, ...input }),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "create_person",
+          title: "Create CRM person",
+          description:
+            "Create a person/contact in the shared KP CRM, optionally connected to an organization. Search first if duplication is possible. Retry-safe with requestKey.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              requestKey: requestKeyProperty,
+              organizationId: nullableUuid,
+              firstName: { type: "string" },
+              lastName: nullableString,
+              email: nullableString,
+              phone: nullableString,
+              title: nullableString,
+              linkedinUrl: nullableString,
+              notes: nullableString,
+            },
+            required: ["requestKey", "firstName"],
+            additionalProperties: false,
+          },
+          annotations: writeAnnotations,
+          execute: async ({ requestKey, firstName, ...input }) =>
+            createPersonForSiteTool(requestKey, { firstName, ...input }),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "create_opportunity",
+          title: "Create CRM opportunity",
+          description:
+            "Create an opportunity in Solta, SnD, or Nex's default pipeline. Defaults to the first open stage and the signed-in owner. Retry-safe with requestKey.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              requestKey: requestKeyProperty,
+              name: { type: "string" },
+              businessSlug: { type: "string", enum: ["solta", "snd", "nex"] },
+              stageSlug: nullableString,
+              organizationId: nullableUuid,
+              ownerId: nullableUuid,
+              source: nullableString,
+              sourceUrl: nullableString,
+              priority: {
+                type: "string",
+                enum: ["critical", "high", "normal", "low"],
+              },
+              amountCents: {
+                anyOf: [{ type: "integer" }, { type: "null" }],
+              },
+              currency: { type: "string" },
+              nextAction: nullableString,
+              nextActionAt: nullableString,
+            },
+            required: ["requestKey", "name", "businessSlug"],
+            additionalProperties: false,
+          },
+          annotations: writeAnnotations,
+          execute: async ({
+            requestKey,
+            name,
+            businessSlug,
+            ...input
+          }) =>
+            createOpportunityForSiteTool(requestKey, {
+              name,
+              businessSlug,
+              ...input,
+            }),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "update_opportunity",
+          title: "Update CRM opportunity",
+          description:
+            "Move an existing opportunity to another stage or update its priority/next action. Stage must be identified by that pipeline's stage slug.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              opportunityId: uuidProperty,
+              stageSlug: { type: "string" },
+              priority: {
+                type: "string",
+                enum: ["critical", "high", "normal", "low"],
+              },
+              nextAction: nullableString,
+              nextActionAt: nullableString,
+            },
+            required: ["opportunityId"],
+            additionalProperties: false,
+          },
+          annotations: writeAnnotations,
+          execute: async ({ opportunityId, ...patch }) =>
+            updateOpportunityForSiteTool(opportunityId, patch),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "get_projects",
+          title: "Get KP projects",
+          description:
+            "Read current high-level KP projects across the businesses, including status, phase, health, milestone, owner, and organization.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            additionalProperties: false,
+          },
+          annotations: readAnnotations,
+          execute: async () => getProjectsForSiteTool(),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "create_project",
+          title: "Create KP project",
+          description:
+            "Create a high-level KP project for Solta, SnD, or Nex. Defaults to planned and the signed-in owner. Retry-safe with requestKey.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              requestKey: requestKeyProperty,
+              name: { type: "string" },
+              businessSlug: { type: "string", enum: ["solta", "snd", "nex"] },
+              organizationId: nullableUuid,
+              opportunityId: nullableUuid,
+              ownerId: nullableUuid,
+              phase: nullableString,
+              nextMilestone: nullableString,
+              nextMilestoneAt: nullableString,
+              externalProjectUrl: nullableString,
+            },
+            required: ["requestKey", "name", "businessSlug"],
+            additionalProperties: false,
+          },
+          annotations: writeAnnotations,
+          execute: async ({
+            requestKey,
+            name,
+            businessSlug,
+            ...input
+          }) =>
+            createProjectForSiteTool(requestKey, {
+              name,
+              businessSlug,
+              ...input,
+            }),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "update_project",
+          title: "Update KP project",
+          description:
+            "Update a project's status, phase, health, or next milestone. Project completion automatically updates project health through the database invariant.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              projectId: uuidProperty,
+              status: {
+                type: "string",
+                enum: [
+                  "planned",
+                  "active",
+                  "waiting",
+                  "blocked",
+                  "complete",
+                  "cancelled",
+                ],
+              },
+              phase: nullableString,
+              health: {
+                type: "string",
+                enum: ["on_track", "needs_attention", "at_risk"],
+              },
+              nextMilestone: nullableString,
+              nextMilestoneAt: nullableString,
+            },
+            required: ["projectId"],
+            additionalProperties: false,
+          },
+          annotations: writeAnnotations,
+          execute: async ({ projectId, ...patch }) =>
+            updateProjectForSiteTool(projectId, patch),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "get_decisions",
+          title: "Get KP decisions",
+          description:
+            "Read KP decisions, including open/discussing/deferred/resolved state, context, recommendation, outcome, owner, business, and priority.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            additionalProperties: false,
+          },
+          annotations: readAnnotations,
+          execute: async () => getDecisionsForSiteTool(),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "create_decision",
+          title: "Create KP decision",
+          description:
+            "Open a decision record in KP Duty. Use for a real decision that should remain visible/auditable, not ordinary notes. Retry-safe with requestKey.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              requestKey: requestKeyProperty,
+              title: { type: "string" },
+              businessSlug: nullableString,
+              ownerId: nullableUuid,
+              mode: { type: "string", enum: ["individual", "joint"] },
+              priority: {
+                type: "string",
+                enum: ["critical", "high", "normal", "low"],
+              },
+              domain: nullableString,
+              neededBy: nullableString,
+              context: nullableString,
+              recommendation: nullableString,
+              revisitTrigger: nullableString,
+            },
+            required: ["requestKey", "title"],
+            additionalProperties: false,
+          },
+          annotations: writeAnnotations,
+          execute: async ({ requestKey, title, ...input }) =>
+            createDecisionForSiteTool(requestKey, { title, ...input }),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "update_decision_status",
+          title: "Update decision status",
+          description:
+            "Move an existing decision among open, discussing, deferred, or superseded. Use resolve_decision for a final resolved outcome.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              decisionId: uuidProperty,
+              status: {
+                type: "string",
+                enum: ["open", "discussing", "deferred", "superseded"],
+              },
+            },
+            required: ["decisionId", "status"],
+            additionalProperties: false,
+          },
+          annotations: writeAnnotations,
+          execute: async ({ decisionId, status }) =>
+            updateDecisionStatusForSiteTool(decisionId, status),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "resolve_decision",
+          title: "Resolve KP decision",
+          description:
+            "Resolve a KP decision with the final outcome. Use only when the user has actually made the decision.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              decisionId: uuidProperty,
+              finalDecision: { type: "string" },
+              effectiveDate: nullableString,
+            },
+            required: ["decisionId", "finalDecision"],
+            additionalProperties: false,
+          },
+          annotations: {
+            ...writeAnnotations,
+            consequentialHint: true,
+          },
+          execute: async ({
+            decisionId,
+            finalDecision,
+            effectiveDate,
+          }) =>
+            resolveDecisionForSiteTool(
+              decisionId,
+              finalDecision,
+              effectiveDate,
+            ),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "get_recent_activity",
+          title: "Get recent KP activity",
+          description:
+            "Read recent shared KP activity with actor attribution. Use to answer what changed recently or confirm a prior write was recorded.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              limit: {
+                type: "integer",
+                minimum: 1,
+                maximum: 50,
+              },
+            },
+            additionalProperties: false,
+          },
+          annotations: readAnnotations,
+          execute: async ({ limit }) =>
+            getRecentActivityForSiteTool(limit ?? 12),
+        },
+        { signal: controller.signal },
+      );
+
+      await registerTool(
+        {
+          name: "add_note",
+          title: "Add KP note",
+          description:
+            "Append a note to the shared activity history for a task, opportunity, project, organization, person, or decision. Retry-safe with requestKey.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              requestKey: requestKeyProperty,
+              entityType: {
+                type: "string",
+                enum: [
+                  "task",
+                  "opportunity",
+                  "project",
+                  "organization",
+                  "person",
+                  "decision",
+                ],
+              },
+              entityId: uuidProperty,
+              note: { type: "string" },
+            },
+            required: ["requestKey", "entityType", "entityId", "note"],
+            additionalProperties: false,
+          },
+          annotations: writeAnnotations,
+          execute: async ({
+            requestKey,
+            entityType,
+            entityId,
+            note,
+          }) =>
+            addNoteForSiteTool(requestKey, {
+              entityType,
+              entityId,
+              note,
+            }),
         },
         { signal: controller.signal },
       );

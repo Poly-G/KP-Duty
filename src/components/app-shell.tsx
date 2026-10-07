@@ -7,6 +7,7 @@ import {
   MessageSquarePlus,
   House,
   ListTodo,
+  BookOpen,
 } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 import type { CurrentProfile } from "@/lib/auth/current-user";
@@ -20,6 +21,7 @@ const nav = [
   { href: "/decisions", label: "Decisions", icon: Gavel },
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/requests", label: "Requests", icon: MessageSquarePlus },
+  { href: "/library", label: "Library", icon: BookOpen },
 ];
 
 type AppShellProps = {
@@ -84,7 +86,7 @@ export function AppShell({ profile, email, children }: AppShellProps) {
         </main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex h-16 border-t border-[var(--border)] bg-[var(--surface)]/95 px-1 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex h-16 overflow-x-auto border-t border-[var(--border)] bg-[var(--surface)]/95 px-1 backdrop-blur md:hidden">
         {nav.map((item) => (
           <NavItem key={item.href} href={item.href} label={item.label} icon={<item.icon size={18} strokeWidth={1.8} />} mobile />
         ))}

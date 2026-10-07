@@ -28,7 +28,7 @@ export function NavItem({
       className={cn(
         "flex items-center rounded-lg text-sm transition",
         mobile
-          ? "min-w-0 flex-1 flex-col justify-center gap-1 px-1 py-2 text-[10px]"
+          ? "min-w-16 shrink-0 flex-1 flex-col justify-center gap-1 px-1 py-2 text-[10px]"
           : "gap-2.5 px-3 py-2",
         active
           ? "bg-[var(--surface-subtle)] font-medium text-[var(--text)]"

@@ -19,7 +19,9 @@ export async function callIdempotentDomainRpc<T>({
     | "kp_create_opportunity"
     | "kp_create_project"
     | "kp_create_decision"
-    | "kp_add_note";
+    | "kp_add_note"
+    | "kp_submit_request"
+    | "kp_send_chat_message";
   source: DomainActionSource;
   requestKey: string;
   payload: Record<string, unknown>;

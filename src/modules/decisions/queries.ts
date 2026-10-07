@@ -9,7 +9,7 @@ export async function listDecisions(): Promise<DecisionRecord[]> {
   const { data, error } = await supabase
     .from("decisions")
     .select(
-      "id,title,domain,mode,status,priority,needed_by,context,recommendation,final_decision,effective_date,revisit_trigger,resolved_at,business:businesses(id,name,slug),owner:profiles!owner_id(id,display_name)",
+      "id,title,domain,mode,status,request_kind,request_impact,request_page,assistant_recommendation,recommendation_reviewed_at,requester:profiles!created_by(id,display_name),priority,needed_by,context,recommendation,final_decision,effective_date,revisit_trigger,resolved_at,business:businesses(id,name,slug),owner:profiles!owner_id(id,display_name)",
     )
     .order("created_at", { ascending: false });
 

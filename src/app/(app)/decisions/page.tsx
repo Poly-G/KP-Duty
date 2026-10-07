@@ -6,10 +6,13 @@ import {
   listDecisions,
 } from "@/modules/decisions/queries";
 
+import { requireActiveIdentity } from "@/lib/auth/current-user";
+
 export default async function DecisionsPage() {
-  const [decisions, businesses] = await Promise.all([
+  const [decisions, businesses, identity] = await Promise.all([
     listDecisions(),
     listDecisionBusinesses(),
+    requireActiveIdentity(),
   ]);
 
   return (
@@ -21,7 +24,7 @@ export default async function DecisionsPage() {
       />
 
       <NewDecisionForm businesses={businesses} />
-      <DecisionList key={JSON.stringify(decisions)} initialDecisions={decisions} />
+      <DecisionList key={JSON.stringify(decisions)} initialDecisions={decisions} isAdmin={identity.profile.role === "admin"} />
     </>
   );
 }

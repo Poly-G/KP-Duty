@@ -25,7 +25,9 @@ function DecisionDetail({
   decision,
   onClose,
   onStatus,
+  isAdmin,
 }: {
+  isAdmin: boolean;
   decision: DecisionRecord;
   onClose: () => void;
   onStatus: (status: DecisionStatus) => void;
@@ -56,6 +58,8 @@ function DecisionDetail({
         </div>
 
         <div className="mt-7 space-y-6">
+          {decision.request_kind ? <section className="rounded-xl bg-[var(--surface-subtle)] p-4 text-sm"><p>{decision.request_kind === "bug" ? "Bug report" : "Feature request"} · Submitted by {decision.requester?.display_name ?? "KP teammate"}</p><p>{decision.request_page}</p><p>{decision.request_impact === "blocking" ? "Blocks current work" : "Slows the process"}</p><p>{decision.recommendation_reviewed_at ? "ChatGPT review added" : "Awaiting Poly’s ChatGPT review"}</p></section> : null}
+          {decision.assistant_recommendation ? <section><p className="text-xs font-semibold">ChatGPT recommendation</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6">{decision.assistant_recommendation}</p></section> : null}
           {decision.context ? (
             <section>
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
@@ -90,7 +94,7 @@ function DecisionDetail({
           ) : null}
 
           {decision.status !== "resolved" &&
-          decision.status !== "superseded" ? (
+          decision.status !== "superseded" && (!decision.request_kind || isAdmin) ? (
             <>
               <div className="flex flex-wrap gap-2">
                 {(["open", "discussing", "deferred"] as DecisionStatus[]).map(
@@ -136,8 +140,10 @@ function DecisionDetail({
 
 export function DecisionList({
   initialDecisions,
+  isAdmin = false,
 }: {
   initialDecisions: DecisionRecord[];
+  isAdmin?: boolean;
 }) {
   const [decisions, setDecisions] = useState(initialDecisions);
   const [selected, setSelected] = useState<DecisionRecord | null>(null);
@@ -258,6 +264,7 @@ export function DecisionList({
       {selected ? (
         <DecisionDetail
           decision={selected}
+          isAdmin={isAdmin}
           onClose={() => setSelected(null)}
           onStatus={(status) => handleStatus(selected, status)}
         />

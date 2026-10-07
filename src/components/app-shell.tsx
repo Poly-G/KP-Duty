@@ -3,6 +3,8 @@ import {
   CircleUserRound,
   ContactRound,
   Gavel,
+  Inbox,
+  MessageSquarePlus,
   House,
   ListTodo,
 } from "lucide-react";
@@ -16,6 +18,8 @@ const nav = [
   { href: "/crm", label: "CRM", icon: ContactRound },
   { href: "/projects", label: "Projects", icon: BriefcaseBusiness },
   { href: "/decisions", label: "Decisions", icon: Gavel },
+  { href: "/inbox", label: "Inbox", icon: Inbox },
+  { href: "/requests", label: "Requests", icon: MessageSquarePlus },
 ];
 
 type AppShellProps = {

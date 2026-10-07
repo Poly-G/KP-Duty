@@ -8,6 +8,12 @@ export type DecisionStatus =
   | "superseded";
 
 export type DecisionRecord = {
+  request_kind: "feature" | "bug" | null;
+  request_impact: "normal" | "blocking" | null;
+  request_page: string | null;
+  assistant_recommendation: string | null;
+  recommendation_reviewed_at: string | null;
+  requester: {id:string;display_name:string|null} | null;
   id: string;
   title: string;
   domain: string | null;

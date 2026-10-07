@@ -204,11 +204,9 @@ function TaskDetail({
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            {task.business ? (
-              <p className="mb-1 text-xs font-medium text-[var(--muted)]">
-                {task.business.name}
-              </p>
-            ) : null}
+            <p className="mb-1 text-xs font-medium text-[var(--muted)]">
+              {[task.reference_code, task.business?.name].filter(Boolean).join(" · ")}
+            </p>
             <h2 className="text-xl font-semibold leading-7">{task.title}</h2>
           </div>
           <button
@@ -226,17 +224,30 @@ function TaskDetail({
             <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
               Do this next
             </p>
-            <p className="mt-2 text-sm leading-6">
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
               {task.next_action || "No next action has been written yet."}
             </p>
           </section>
+
+          {task.instructions ? (
+            <section>
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                Step-by-step
+              </p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
+                {task.instructions}
+              </p>
+            </section>
+          ) : null}
 
           {task.finished_when ? (
             <section>
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                 Finished when
               </p>
-              <p className="mt-2 text-sm leading-6">{task.finished_when}</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
+                {task.finished_when}
+              </p>
             </section>
           ) : null}
 
@@ -245,7 +256,7 @@ function TaskDetail({
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                 Waiting on / needs
               </p>
-              <p className="mt-2 text-sm leading-6">{task.waiting_on}</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{task.waiting_on}</p>
             </section>
           ) : null}
 
@@ -256,7 +267,7 @@ function TaskDetail({
                   <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                     What this is
                   </p>
-                  <p className="mt-2 text-sm leading-6">{task.what_this_is}</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{task.what_this_is}</p>
                 </>
               ) : null}
               {task.why_it_matters ? (
@@ -264,12 +275,23 @@ function TaskDetail({
                   <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                     Why it matters
                   </p>
-                  <p className="mt-2 text-sm leading-6">
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
                     {task.why_it_matters}
                   </p>
                 </div>
               ) : null}
             </section>
+          ) : null}
+
+          {task.notes ? (
+            <details className="rounded-xl border border-[var(--border)] p-4">
+              <summary className="cursor-pointer text-xs font-medium text-[var(--muted-strong)]">
+                Notes
+              </summary>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--muted-strong)]">
+                {task.notes}
+              </p>
+            </details>
           ) : null}
 
           {task.reference_url ? (
@@ -305,7 +327,9 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
     () =>
       tasks.filter(
         (task) =>
-          task.availability === "yes" && task.stage !== "finished",
+          task.owner_id !== null &&
+          task.availability === "yes" &&
+          task.stage !== "finished",
       ),
     [tasks],
   );
@@ -314,9 +338,18 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
     () =>
       tasks.filter(
         (task) =>
+          task.owner_id !== null &&
           task.stage !== "finished" &&
           (task.availability === "waiting" ||
             task.availability === "blocked"),
+      ),
+    [tasks],
+  );
+
+  const unassigned = useMemo(
+    () =>
+      tasks.filter(
+        (task) => task.owner_id === null && task.stage !== "finished",
       ),
     [tasks],
   );
@@ -373,7 +406,7 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
     if (!over) return;
 
     const task = tasks.find((candidate) => candidate.id === taskId);
-    if (!task || task.stage === "finished") return;
+    if (!task || task.stage === "finished" || task.owner_id === null) return;
 
     const overId = String(over.id);
     const destinationTask = tasks.find((candidate) => candidate.id === overId);
@@ -450,6 +483,36 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
                   </span>
                   <span className="mt-0.5 block truncate text-xs text-[var(--muted)]">
                     {task.waiting_on || "Dependency needs resolution."}
+                  </span>
+                </span>
+                <ArrowRight size={15} className="text-[var(--muted)]" />
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {unassigned.length ? (
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold">Needs an owner</h2>
+          <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+            These are visible to the admin so they do not disappear from KP.
+          </p>
+
+          <div className="mt-3 divide-y divide-[var(--border)] rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+            {unassigned.map((task) => (
+              <button
+                key={task.id}
+                type="button"
+                onClick={() => setSelectedTask(task)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[var(--surface-subtle)]"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">
+                    {task.title}
+                  </span>
+                  <span className="mt-0.5 block truncate text-xs text-[var(--muted)]">
+                    {task.next_action || "Assign an owner before starting."}
                   </span>
                 </span>
                 <ArrowRight size={15} className="text-[var(--muted)]" />

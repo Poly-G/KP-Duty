@@ -74,7 +74,7 @@ export async function getBusinessPipeline(
       supabase
         .from("opportunities")
         .select(
-          "id,name,business_id,pipeline_id,stage_id,organization_id,owner_id,source,source_url,priority,amount_cents,currency,next_action,next_action_at,position,organization:organizations(id,name),owner:profiles(id,display_name)",
+          "id,reference_code,name,business_id,pipeline_id,stage_id,organization_id,owner_id,source,source_url,priority,amount_cents,currency,next_action,next_action_at,position,metadata,organization:organizations(id,name),owner:profiles(id,display_name)",
         )
         .eq("pipeline_id", pipeline.id)
         .is("archived_at", null)

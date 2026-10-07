@@ -14,16 +14,20 @@ function MiniTask({ task }: { task: WorkTask }) {
 }
 
 export function HomeWorkSummary({ tasks }: { tasks: WorkTask[] }) {
-  const working = tasks.filter(
+  const owned = tasks.filter((task) => task.owner_id !== null);
+  const working = owned.filter(
     (task) => task.stage === "working" && task.availability === "yes",
   );
-  const next = tasks.filter(
+  const next = owned.filter(
     (task) => task.stage === "todo" && task.availability === "yes",
   );
-  const waiting = tasks.filter(
+  const waiting = owned.filter(
     (task) =>
       task.stage !== "finished" &&
       (task.availability === "waiting" || task.availability === "blocked"),
+  );
+  const unassigned = tasks.filter(
+    (task) => task.owner_id === null && task.stage !== "finished",
   );
 
   const groups = [
@@ -42,10 +46,19 @@ export function HomeWorkSummary({ tasks }: { tasks: WorkTask[] }) {
       tasks: waiting.slice(0, 3),
       empty: "Nothing is waiting or blocked.",
     },
+    ...(unassigned.length
+      ? [
+          {
+            title: "Needs an owner",
+            tasks: unassigned.slice(0, 3),
+            empty: "",
+          },
+        ]
+      : []),
   ];
 
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       {groups.map((group) => (
         <section
           key={group.title}

@@ -4,10 +4,13 @@ export type TaskPriority = "critical" | "high" | "normal" | "low";
 
 export type WorkTask = {
   id: string;
+  reference_code: string | null;
   title: string;
   what_this_is: string | null;
   why_it_matters: string | null;
-  owner_id: string;
+  instructions: string | null;
+  notes: string | null;
+  owner_id: string | null;
   stage: TaskStage;
   availability: TaskAvailability;
   priority: TaskPriority;

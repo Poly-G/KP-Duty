@@ -36,12 +36,13 @@ export type PipelineStage = {
 
 export type Opportunity = {
   id: string;
+  reference_code: string | null;
   name: string;
   business_id: string;
   pipeline_id: string;
   stage_id: string;
   organization_id: string | null;
-  owner_id: string;
+  owner_id: string | null;
   source: string | null;
   source_url: string | null;
   priority: TaskPriority;
@@ -50,6 +51,7 @@ export type Opportunity = {
   next_action: string | null;
   next_action_at: string | null;
   position: number;
+  metadata: Record<string, unknown>;
   organization: {
     id: string;
     name: string;

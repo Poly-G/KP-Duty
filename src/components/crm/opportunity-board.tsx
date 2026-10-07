@@ -122,6 +122,20 @@ function StageColumn({
   );
 }
 
+function displayValue(value: unknown) {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function labelForMetadata(key: string) {
+  return key
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
 function OpportunityDetail({
   opportunity,
   onClose,
@@ -129,6 +143,10 @@ function OpportunityDetail({
   opportunity: Opportunity;
   onClose: () => void;
 }) {
+  const detailEntries = Object.entries(opportunity.metadata ?? {}).filter(
+    ([, value]) => value !== null && value !== undefined && value !== "",
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/15" onClick={onClose}>
       <aside
@@ -137,11 +155,11 @@ function OpportunityDetail({
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            {opportunity.organization ? (
-              <p className="mb-1 text-xs font-medium text-[var(--muted)]">
-                {opportunity.organization.name}
-              </p>
-            ) : null}
+            <p className="mb-1 text-xs font-medium text-[var(--muted)]">
+              {[opportunity.reference_code, opportunity.organization?.name]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
             <h2 className="text-xl font-semibold leading-7">
               {opportunity.name}
             </h2>
@@ -161,7 +179,7 @@ function OpportunityDetail({
             <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
               Do this next
             </p>
-            <p className="mt-2 text-sm leading-6">
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
               {opportunity.next_action || "No next action has been written yet."}
             </p>
           </section>
@@ -201,6 +219,26 @@ function OpportunityDetail({
               </p>
             </div>
           </section>
+
+          {detailEntries.length ? (
+            <details className="rounded-xl border border-[var(--border)] p-4">
+              <summary className="cursor-pointer text-xs font-medium text-[var(--muted-strong)]">
+                More details
+              </summary>
+              <dl className="mt-4 space-y-4">
+                {detailEntries.map(([key, value]) => (
+                  <div key={key}>
+                    <dt className="text-[10px] uppercase tracking-[0.1em] text-[var(--muted)]">
+                      {labelForMetadata(key)}
+                    </dt>
+                    <dd className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[var(--muted-strong)]">
+                      {displayValue(value)}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
+          ) : null}
 
           {opportunity.source_url ? (
             <a

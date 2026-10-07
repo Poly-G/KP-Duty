@@ -1,6 +1,6 @@
-"use client";
-
 /// <reference types="webmcp-types" />
+
+"use client";
 
 import { useEffect } from "react";
 import {

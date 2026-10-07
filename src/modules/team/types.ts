@@ -1,0 +1,1 @@
+export type StaffMember={id:string;display_name:string|null;email:string;role:'admin'|'team_member';status:'active'|'disabled';revision:number;confirmed:boolean;login_available:boolean;last_sign_in_at:string|null;open_tasks:number;open_projects:number};

@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';
+const {PGlite}=await import(process.env.PGLITE_TEST_PACKAGE||'@electric-sql/pglite');const db=new PGlite();
+await db.exec(`create role anon;create role authenticated;create schema auth;create schema private;grant usage on schema auth,private,public to authenticated;
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,last_sign_in_at timestamptz,deleted_at timestamptz,banned_until timestamptz,raw_app_meta_data jsonb default '{}',raw_user_meta_data jsonb default '{}');`);
+await db.exec(await readFile(new URL('../../supabase/migrations/202610070001_gate_a_foundation.sql',import.meta.url),'utf8'));
+await db.exec(`create function private.is_active_member() returns boolean language sql stable security definer set search_path='' as $$select public.is_active_member()$$;
+create function private.is_admin() returns boolean language sql stable security definer set search_path='' as $$select public.is_admin()$$;
+create table tasks(id uuid primary key,owner_id uuid,archived_at timestamptz,stage text);create table projects(id uuid primary key,owner_id uuid,archived_at timestamptz,status text);
+insert into auth.users(id,email,email_confirmed_at) values('00000000-0000-4000-8000-000000000001','admin@example.test',now()),('00000000-0000-4000-8000-000000000002','member@example.test',now());
+update profiles set role='admin',display_name='Admin' where id='00000000-0000-4000-8000-000000000001';update profiles set display_name='Member' where id='00000000-0000-4000-8000-000000000002';`);
+await db.exec(await readFile(new URL('../../supabase/migrations/20261007235315_team_administration.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../../supabase/migrations/20261007235736_team_profile_read_policy.sql',import.meta.url),'utf8'));
+const admin='00000000-0000-4000-8000-000000000001',member='00000000-0000-4000-8000-000000000002',newUser='00000000-0000-4000-8000-000000000003',invite='10000000-0000-4000-8000-000000000001';
+async function user(id){await db.exec('reset role');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec('set role authenticated');}
+async function change(id,rev,name,role,status,confirm='UPDATE '+name){return db.query('select kp_change_staff($1,$2,$3,$4,$5,$6,$7)',[id,rev,name,role,status,'Approved staff change',confirm]);}
+await user(member);await assert.rejects(db.query('select kp_team_roster()'),/Admin/);await assert.rejects(db.query("update profiles set role='admin' where id=$1",[member]),/permission denied/);await assert.rejects(db.query('select kp_prepare_staff($1,$2,$3,$4)',[invite,'new@example.test','New teammate','Approved addition']),/Admin/);
+await user(admin);await assert.rejects(change(admin,1,'Admin','team_member','active'),/Another admin/);await assert.rejects(change(member,1,'Member','admin','active','yes'),/exact confirmation/);await change(member,1,'Member','team_member','disabled');await assert.rejects(change(member,1,'Member','admin','active'),/record changed/);
+await user(member);assert.equal((await db.query('select id,status from profiles')).rows.length,1,'Disabled member can see only their own status');await assert.rejects(db.query('select kp_team_roster()'),/Admin/);
+await user(admin);await change(member,2,'Member','team_member','active');
+await db.query('select kp_prepare_staff($1,$2,$3,$4)',[invite,'NEW@example.test','New teammate','Approved addition']);await db.query('select kp_prepare_staff($1,$2,$3,$4)',[invite,'new@example.test','New teammate','Approved addition']);
+await assert.rejects(db.query('select kp_prepare_staff($1,$2,$3,$4)',[invite,'other@example.test','New teammate','Approved addition']),/retry mismatch/);
+await db.exec('reset role');await db.query('insert into auth.users(id,email,raw_user_meta_data) values($1,$2,$3)',[newUser,'new@example.test',{role:'admin',status:'active'}]);
+assert.equal((await db.query('select status from profiles where id=$1',[newUser])).rows[0].status,'disabled','Prepared signup must never self-activate');
+await user(admin);await assert.rejects(change(newUser,1,'New teammate','team_member','active'),/Confirmed/);
+await db.exec('reset role');await db.query('update auth.users set email_confirmed_at=now() where id=$1',[newUser]);await user(admin);await change(newUser,1,'New teammate','team_member','active');
+await db.exec('reset role');await db.exec("insert into auth.users(id,email,raw_user_meta_data) values('00000000-0000-4000-8000-000000000004','unlisted@example.test','{\"role\":\"admin\"}')");assert.equal((await db.query("select count(*)::int n from profiles where id='00000000-0000-4000-8000-000000000004'")).rows[0].n,0,'Unlisted auth user must not become staff');
+await assert.rejects(db.query("update profiles set status='disabled' where id=$1",[admin]),/at least one active admin/);
+await user(admin);const roster=(await db.query('select kp_team_roster() as roster')).rows[0].roster;assert.equal(roster.length,3);assert.equal(roster.find(p=>p.id===newUser).confirmed,true);
+const cancel='10000000-0000-4000-8000-000000000002';await db.query('select kp_prepare_staff($1,$2,$3,$4)',[cancel,'cancel@example.test','Cancel teammate','Approved addition']);await assert.rejects(db.query('select kp_cancel_staff_preparation($1,$2,$3)',[cancel,'yes','Cancelled request']),/Exact confirmation/);await db.query('select kp_cancel_staff_preparation($1,$2,$3)',[cancel,'CANCEL cancel@example.test','Cancelled request']);
+await db.exec('reset role');await db.exec("insert into auth.users(id,email) values('00000000-0000-4000-8000-000000000005','cancel@example.test')");assert.equal((await db.query("select count(*)::int n from profiles where id='00000000-0000-4000-8000-000000000005'")).rows[0].n,0);
+await db.exec('set role anon');await assert.rejects(db.query('select kp_team_roster()'),/permission denied/);await db.close();console.log('Team checks passed: admin-only roster, direct-write denial, last-admin and self-access protection, stale revision rejection, inactive member isolation, explicit verified activation, retry-safe preparation, cancellation and unlisted signup denial.');

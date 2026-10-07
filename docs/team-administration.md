@@ -1,0 +1,11 @@
+# Team administration
+
+Admin-only Team & access is a staff roster, explicit activation and durable access history. Existing Poly/Keshia profiles retain their roles/status. Team members currently share internal company work across businesses; this release does not promise business-specific isolation. Client memberships and branded login portals remain a later, separate authentication slice.
+
+Preparing staff records an approved email/name with a retry-safe ID. It sends no email and grants no access. New auth identities create a disabled staff profile only when their email matches an uncancelled prepared staff entry; unlisted or explicitly client-kind identities receive no staff profile. Editable user metadata cannot grant roles. An admin activates linked staff only after their auth email is confirmed and their login is not banned/deleted. Invitation transport/account creation will be wired in the final authentication slice; the page clearly distinguishes prepared from invited.
+
+Role/status/name changes require current record revision, a reason, exact typed confirmation and checked verification. Another admin must change one's own role/status; the last active administrator cannot be disabled/demoted even through an administrative direct database update. Authenticated direct profile UPDATE is revoked. Restricted private functions enforce admin checks; public invoker wrappers expose controlled operations. Team preparation and history tables use admin-only read RLS and no direct writes. Disabled staff retain only access to their own profile status; existing active-membership policies stop new shared-record requests even with an unexpired login token. Previously downloaded files and already-issued expiring download URLs cannot be recalled.
+
+Disable/restore never deletes or transfers work. The page shows unfinished tasks and open projects before a change so ownership can be reassigned deliberately using existing tools. Roster email, confirmation and last-sign-in data are returned to admins without passwords/tokens. Company backups include preparations/history and existing safe profile fields.
+
+Library also reserves Solta and Sent Brand guides slots, marked awaiting supplied approved material. No invented guide or stale research is published as a new approved brand guide.

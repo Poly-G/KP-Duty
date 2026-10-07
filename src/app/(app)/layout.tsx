@@ -27,9 +27,9 @@ export default async function ProtectedLayout({
     return (
       <main className="grid min-h-screen place-items-center px-5">
         <section className="max-w-md rounded-2xl border border-[var(--border)] bg-white p-6 shadow-sm">
-          <h1 className="text-lg font-semibold">Account disabled</h1>
+          <h1 className="text-lg font-semibold">Team access inactive</h1>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            This KP Duty account is currently disabled.
+            Your team access is inactive or awaiting admin activation. Contact your KP Duty admin.
           </p>
         </section>
       </main>

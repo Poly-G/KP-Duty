@@ -6,6 +6,7 @@ export default async function LibraryPage({searchParams}:{searchParams:Promise<{
  const {q="",history}=await searchParams;
  const [docs,{profile}]=await Promise.all([listKnowledge(q,history==="1"),requireActiveIdentity()]);
  return <><PageHeading eyebrow="Company library" title="What we know and how we work" description="Company truth, business guides and approved processes live here. Notion is our backup."/>
+ <section className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5"><h2 className="font-medium">Brand guides</h2><p className="mt-2 text-sm text-[var(--muted)]">Approved brand guides will live here so the team and their chats use the same standards. These slots are waiting for Poly’s supplied guides; existing research and restart documents are separate library references.</p><div className="mt-4 grid gap-3 sm:grid-cols-2">{['Solta Works','Sent & Delivered'].map(name=><article key={name} className="rounded-xl border border-[var(--border)] p-4"><h3 className="text-sm font-medium">{name}</h3><p className="mt-1 text-xs text-[var(--muted)]">Awaiting brand guide</p></article>)}</div></section>
  <form className="mb-6 flex flex-wrap items-center gap-3">
  <label className="flex-1">Find a guide<input name="q" defaultValue={q} maxLength={200} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-white p-3" placeholder="Search titles…"/></label>
  <label className="text-sm"><input type="checkbox" name="history" value="1" defaultChecked={history==="1"}/> Include research, drafts and history</label>

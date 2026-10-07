@@ -21,6 +21,12 @@ test('callback next cannot redirect outside the app', () => {
 });
 
 const recoveryPath = '/auth/callback?next=/account/password';
+test('custom domain callbacks stay on the trusted incoming host', () => {
+  const args = ['https://localhost:10000/auth/callback', 'https://app.onrender.com', 'https://mettlesite.com'];
+  assert.equal(authCallbackUrl('/account/password', ...args, 'mettlesite.com').origin, 'https://mettlesite.com');
+  assert.equal(authCallbackUrl('/account/password', ...args, 'app.onrender.com').origin, 'https://app.onrender.com');
+  assert.equal(authCallbackUrl('/account/password', ...args, 'evil.example').origin, 'https://app.onrender.com');
+});
 test('Render recovery stays on Render even with the production site URL', () => {
   assert.equal(passwordRecoveryUrl('https://kp-duty-webmcp-test.onrender.com', 'https://kp-duty.vercel.app'),
     `https://kp-duty-webmcp-test.onrender.com${recoveryPath}`);

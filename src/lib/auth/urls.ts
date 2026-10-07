@@ -9,10 +9,17 @@ function httpOrigin(value: string | null | undefined): string | null {
   }
 }
 
-export function authCallbackUrl(path: string | null, requestUrl: string, renderUrl?: string): URL {
+export function authCallbackUrl(path: string | null, requestUrl: string, renderUrl?: string, siteUrl?: string, publicHost?: string | null): URL {
   // Render terminates TLS at its proxy; Next may see localhost:10000 internally.
   // RENDER_EXTERNAL_URL is supplied by Render and keeps redirects on this service.
-  const origin = httpOrigin(renderUrl) ?? httpOrigin(requestUrl);
+  const renderOrigin = httpOrigin(renderUrl);
+  const siteOrigin = httpOrigin(siteUrl);
+  // Only honor a proxy host that matches this service or its configured domain.
+  // Arbitrary forwarded hosts cannot become authentication destinations.
+  const matchingOrigin = [siteOrigin, renderOrigin].find(
+    (candidate) => candidate && new URL(candidate).host === publicHost,
+  );
+  const origin = matchingOrigin ?? renderOrigin ?? httpOrigin(requestUrl);
   if (!origin) throw new Error('Missing auth callback origin');
   const destination = new URL(path && path.startsWith('/') && !path.startsWith('//') ? path : '/', origin);
   // URL parsing also treats backslashes as separators. Never allow an external next.

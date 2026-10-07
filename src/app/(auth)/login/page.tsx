@@ -1,8 +1,8 @@
-import { requestMagicLink } from "@/app/actions/auth";
+import Link from "next/link";
+import { signInWithPassword } from "@/app/actions/auth";
 
 type LoginPageProps = {
   searchParams: Promise<{
-    sent?: string;
     error?: string;
   }>;
 };
@@ -26,15 +26,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
           <h2 className="text-sm font-medium">Sign in</h2>
           <p className="mt-1 text-sm leading-5 text-[var(--muted)]">
-            Use an email address already invited to KP Duty. We will send a
-            secure sign-in link.
+            Use your KP Duty email and password.
           </p>
-
-          {params.sent ? (
-            <div className="mt-5 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-              Check your email for the KP Duty sign-in link.
-            </div>
-          ) : null}
 
           {params.error ? (
             <div className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -42,7 +35,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </div>
           ) : null}
 
-          <form action={requestMagicLink} className="mt-5 space-y-3">
+          <form action={signInWithPassword} className="mt-5 space-y-3">
             <label className="block text-xs font-medium text-[var(--muted-strong)]">
               Email
               <input
@@ -54,13 +47,32 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 className="mt-1.5 h-11 w-full rounded-xl border border-[var(--border)] bg-white px-3.5 text-sm outline-none transition focus:border-[var(--focus)] focus:ring-2 focus:ring-orange-100"
               />
             </label>
+
+            <label className="block text-xs font-medium text-[var(--muted-strong)]">
+              Password
+              <input
+                required
+                type="password"
+                name="password"
+                autoComplete="current-password"
+                className="mt-1.5 h-11 w-full rounded-xl border border-[var(--border)] bg-white px-3.5 text-sm outline-none transition focus:border-[var(--focus)] focus:ring-2 focus:ring-orange-100"
+              />
+            </label>
+
             <button
               type="submit"
               className="h-11 w-full rounded-xl bg-[var(--accent)] px-4 text-sm font-medium text-[var(--accent-foreground)] transition hover:opacity-90"
             >
-              Send sign-in link
+              Sign in
             </button>
           </form>
+
+          <Link
+            href="/forgot-password"
+            className="mt-4 inline-block text-xs font-medium text-[var(--muted-strong)] underline underline-offset-4"
+          >
+            Forgot password?
+          </Link>
         </div>
 
         <p className="mt-4 text-xs leading-5 text-[var(--muted)]">

@@ -18,6 +18,7 @@ insert into businesses values('10000000-0000-4000-8000-000000000001','solta',tru
 insert into pipelines values('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001',true,null),('20000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002',true,null);
 insert into pipeline_stages values('30000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','open',1),('30000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','open',1);`);
 await db.exec(await readFile(new URL('../../supabase/migrations/20261007232419_lead_imports_recoverable_archives.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../../supabase/migrations/20261007233447_import_identity_deduplication.sql',import.meta.url),'utf8'));
 async function user(n){await db.exec(`reset role;set role authenticated;select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-00000000000${n}',false);`);}
 const lead=(company,business='solta',service='website')=>({company,business,service,domain:company.toLowerCase()+'.example.test',website:'https://'+company.toLowerCase()+'.example.test',email:'owner@'+company.toLowerCase()+'.example.test',contact:'Sample owner',phone:'',notes:'Research note',source:'Chat research',source_url:'',override_reason:''});
 async function batch(n,rows){return (await db.query('select kp_import_lead_batch($1,$2,$3) as result',['40000000-0000-4000-8000-00000000000'+n,'leads.csv',rows])).rows[0].result;}
@@ -26,6 +27,13 @@ await assert.rejects(batch(1,[lead('Different')]),/retry mismatch/);
 await assert.rejects(batch(3,[lead('Wrong','snd','website')]),/override/);
 await assert.rejects(batch(3,[lead('Atomic'),{...lead('Bad'),email:'invalid'}]),/Invalid company or email/);
 await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from opportunities')).rows[0].n,2,'Failed batch left partial leads');assert.equal((await db.query('select count(*)::int n from organizations')).rows[0].n,2);
+await user(2);
+assert.deepEqual(await batch(6,[{...lead('Acme'),service:'Web design'}]),{added:0,skipped:1},'Service wording must not create another lead');
+assert.deepEqual(await batch(7,[{...lead('Acme'),company:'Acme!',domain:'',website:'',email:''}]),{added:0,skipped:1},'Punctuation and missing URLs must reuse identity');
+assert.deepEqual(await batch(8,[{...lead('Renamed'),domain:'',website:'',email:lead('Acme').email}]),{added:0,skipped:1},'Known contact email must prevent duplicate company');
+await db.exec("reset role;update opportunities set archived_at=now() where name like 'Acme%'");await user(2);
+assert.deepEqual(await batch(9,[lead('Acme')]),{added:0,skipped:1},'Archived imported lead must be restored, not recreated');
+await db.exec('reset role');
 const person=(await db.query('select id,first_name from people limit 1')).rows[0];const org=(await db.query('select id,name from organizations limit 1')).rows[0];
 await user(2);await assert.rejects(db.query('select kp_archive_record($1,$2,$3,$4,$5)',['person',person.id,'archive','ARCHIVE '+person.first_name,'Duplicate contact']),/Admin/);
 await user(1);await assert.rejects(db.query('select kp_archive_record($1,$2,$3,$4,$5)',['person',person.id,'archive','yes','Duplicate contact']),/exact confirmation/);

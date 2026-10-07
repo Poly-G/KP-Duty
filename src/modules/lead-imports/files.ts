@@ -22,6 +22,6 @@ export async function leadFileTable(name:string,bytes:Buffer):Promise<string[][]
  if(!entries)throw new Error('Invalid XLSX workbook.');
  const workbook=new ExcelJS.Workbook();await workbook.xlsx.load(bytes as unknown as Parameters<typeof workbook.xlsx.load>[0]);
  const sheets=workbook.worksheets.filter(sheet=>sheet.rowCount>0);if(sheets.length!==1)throw new Error('Use one populated worksheet per import.');
- const sheet=sheets[0];if(sheet.rowCount>501||sheet.columnCount>50)throw new Error('Use up to 500 leads and 50 columns.');
+ const sheet=sheets[0];if(sheet.rowCount>511||sheet.columnCount>50)throw new Error('Use up to 500 leads and 50 columns.');
  const table:string[][]=[];sheet.eachRow(row=>{const values:string[]=[];for(let i=1;i<=sheet.columnCount;i++){const cell=row.getCell(i);if(cell.type===ExcelJS.ValueType.Formula)throw new Error('Formula cells are not imported. Export calculated values to CSV.');values.push(cell.text);}if(values.some(v=>v.trim()))table.push(values);});return table;
 }

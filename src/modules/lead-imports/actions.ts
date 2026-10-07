@@ -4,12 +4,12 @@ import {revalidatePath} from 'next/cache';
 import {requireActiveIdentity} from '@/lib/auth/current-user';
 import {createClient} from '@/lib/supabase/server';
 import {leadFileTable} from './files';
-import {normalizeLeads,suggestBusiness} from './normalize';
+import {normalizeLeads,suggestBusiness,suggestedHeaders,findLeadHeader} from './normalize';
 import type {LeadRow} from './normalize';
 export async function previewLeadImport(form:FormData){
- await requireActiveIdentity();const selected=z.enum(['solta','snd']).parse(form.get('business'));const file=form.get('file');
+ await requireActiveIdentity();z.enum(['solta','snd']).parse(form.get('business'));const file=form.get('file');
  if(!(file instanceof File)||file.size>2*1024*1024)throw new Error('Select a CSV or XLSX file up to 2 MB.');
- return {fileName:file.name.slice(0,200),rows:normalizeLeads(await leadFileTable(file.name,Buffer.from(await file.arrayBuffer())),selected)};
+ const raw=await leadFileTable(file.name,Buffer.from(await file.arrayBuffer()));const header=findLeadHeader(raw);const table=header>=0?raw.slice(header):raw;return {fileName:file.name.slice(0,200),table,mapping:suggestedHeaders(table[0]||[])};
 }
 export async function commitLeadImport(id:string,fileName:string,rows:LeadRow[]){
  await requireActiveIdentity();z.string().uuid().parse(id);

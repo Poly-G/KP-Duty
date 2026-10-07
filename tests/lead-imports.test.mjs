@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import ExcelJS from 'exceljs';
-import {parseCsv,normalizeLeads,suggestBusiness} from '../src/modules/lead-imports/normalize.ts';
+import {parseCsv,normalizeLeads,suggestBusiness,findLeadHeader,suggestedHeaders} from '../src/modules/lead-imports/normalize.ts';
 import {leadFileTable} from '../src/modules/lead-imports/files.ts';
 test('CSV handles quoted commas, multiline research, BOM and route suggestions without mistaking a website URL for a service',()=>{
 const table=parseCsv('\uFEFFCompany,Website,Service,Notes\r\n"Acme, LLC",acme.test,Website,"Research\nsecond line"\r\nMailCo,mail.test,Email marketing,Proof\r\nUnknown,unknown.test,,Review');
@@ -14,4 +14,12 @@ assert.deepEqual(await leadFileTable('leads.xlsx',bytes),[['Company','Service'],
 sheet.getCell('B2').value={formula:'1+1',result:2};await assert.rejects(leadFileTable('formula.xlsx',Buffer.from(await workbook.xlsx.writeBuffer())),/Formula/);
 workbook.addWorksheet('Other').addRow(['Second sheet']);await assert.rejects(leadFileTable('mixed.xlsx',Buffer.from(await workbook.xlsx.writeBuffer())),/one populated/);
 await assert.rejects(leadFileTable('bad.xlsx',Buffer.from('not an excel workbook')),/Invalid XLSX/);await assert.rejects(leadFileTable('large.csv',Buffer.alloc(2*1024*1024+1)),/2 MB/);
+});
+
+test('Solta research headers preserve context, skip title rows and exclude duplicate identities',()=>{
+ const headers=['Lead ID','Business','Website','Location','Priority','Stage','Visible Website / Digital Issue','Solta Proposal Angle','Ability-to-Pay Signal','Public Contact','Email','Outreach Channel','Next Action','Outreach Allowed?','Source URL'];
+ const table=[['Solta Website Leads'],['Historical source note'],headers,['LEAD-001','Example Co','No clear owned site found','Nevada','High','Qualified','No booking path','Create website','Commercial services','555-0100','','Phone','Prepare proposal','No — qualified only','https://example.test'],['LEAD-002','Example-Co','','','','','','','','','','','','','']];
+ assert.equal(findLeadHeader(table),2);assert.equal(suggestedHeaders(headers)[1],'company');
+ const rows=normalizeLeads(table.slice(2),'solta');assert.equal(rows[0].issue,null);assert.equal(rows[0].website,'');assert.equal(rows[0].business,'solta');assert.equal(rows[0].service,'Website');assert.match(rows[0].notes,/Outreach allowed\?: No — qualified only/);assert.match(rows[0].notes,/Public contact: 555-0100/);assert.match(rows[1].issue,/Duplicate/);
+ assert.equal(suggestedHeaders(['Company','Destination Business'])[1],'business');
 });

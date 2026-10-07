@@ -6,6 +6,24 @@ import { createClient } from "@/lib/supabase/server";
 
 const emailSchema = z.string().email();
 
+function authErrorMessage(error: { code?: string; status?: number; message?: string }) {
+  if (
+    error.code === "over_email_send_rate_limit" ||
+    error.status === 429
+  ) {
+    return "Email sending is temporarily rate-limited by Supabase. Please wait a little while and try again.";
+  }
+
+  if (
+    error.code === "user_not_found" ||
+    error.code === "otp_disabled"
+  ) {
+    return "That email is not authorized for KP Duty.";
+  }
+
+  return "We could not send the sign-in link. Please try again shortly.";
+}
+
 export async function requestMagicLink(formData: FormData) {
   const parsed = emailSchema.safeParse(formData.get("email"));
 
@@ -28,9 +46,7 @@ export async function requestMagicLink(formData: FormData) {
 
   if (error) {
     redirect(
-      `/login?error=${encodeURIComponent(
-        "This email is not invited to KP Duty or the sign-in link could not be sent.",
-      )}`,
+      `/login?error=${encodeURIComponent(authErrorMessage(error))}`,
     );
   }
 

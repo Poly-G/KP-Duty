@@ -24,6 +24,7 @@ export async function listDecisionBusinesses() {
   const { data, error } = await supabase
     .from("businesses")
     .select("id,name,slug")
+    .eq("is_active", true)
     .order("name");
 
   if (error) throw new Error(error.message);

@@ -43,7 +43,7 @@ export function NewProjectForm({
               Choose business
             </option>
             {businesses.map((business) => (
-              <option key={business.id} value={business.id}>
+              <option key={business.id} value={business.id} disabled={!business.is_active}>
                 {business.name}{business.is_active ? "" : " — parked"}
               </option>
             ))}
@@ -72,16 +72,6 @@ export function NewProjectForm({
             name="phase"
             className="mt-1.5 h-10 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm"
             placeholder="Design, Build, QA…"
-          />
-        </label>
-
-        <label className="text-xs font-medium text-[var(--muted-strong)]">
-          Source system
-          <input
-            name="source_system"
-            className="mt-1.5 h-10 w-full rounded-lg border border-[var(--border)] bg-white px-3 text-sm"
-            placeholder="kp, solta, snd…"
-            defaultValue="kp"
           />
         </label>
 

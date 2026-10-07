@@ -766,7 +766,7 @@ values
     'ac88eaa6-a08e-422c-b594-b92cfabdd7ee',
     'ac88eaa6-a08e-422c-b594-b92cfabdd7ee'
   )
-on conflict (reference_code) do update set
+on conflict (reference_code) where reference_code is not null do update set
   title=excluded.title,
   business_id=excluded.business_id,
   owner_id=excluded.owner_id,
@@ -1051,7 +1051,7 @@ values
     'ac88eaa6-a08e-422c-b594-b92cfabdd7ee',
     'ac88eaa6-a08e-422c-b594-b92cfabdd7ee'
   )
-on conflict (reference_code) do update set
+on conflict (reference_code) where reference_code is not null do update set
   name=excluded.name,
   business_id=excluded.business_id,
   pipeline_id=excluded.pipeline_id,
@@ -1096,7 +1096,7 @@ values
     'ac88eaa6-a08e-422c-b594-b92cfabdd7ee',
     'ac88eaa6-a08e-422c-b594-b92cfabdd7ee'
   )
-on conflict (reference_code) do update set
+on conflict (reference_code) where reference_code is not null do update set
   business_id=excluded.business_id,
   title=excluded.title,
   domain=excluded.domain,

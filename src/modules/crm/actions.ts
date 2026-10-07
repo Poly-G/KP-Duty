@@ -39,7 +39,7 @@ export async function createOrganization(formData: FormData) {
   });
 
   refreshCrm();
-  return result;
+  void result;
 }
 
 export async function createPerson(formData: FormData) {
@@ -58,7 +58,7 @@ export async function createPerson(formData: FormData) {
   });
 
   refreshCrm();
-  return result;
+  void result;
 }
 
 export async function createOpportunity(formData: FormData) {
@@ -96,7 +96,7 @@ export async function createOpportunity(formData: FormData) {
   });
 
   refreshCrm(businessSlug);
-  return result;
+  void result;
 }
 
 export async function moveOpportunityStage(

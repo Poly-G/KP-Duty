@@ -189,6 +189,14 @@ begin
       using errcode = '42501';
   end if;
 
+  if v_owner is not null and not exists (
+    select 1 from public.profiles p
+    where p.id = v_owner and p.status = 'active'
+  ) then
+    raise exception 'Task owner must be an active KP member'
+      using errcode = '22023';
+  end if;
+
   if nullif(btrim(p_payload ->> 'businessId'), '') is not null then
     v_business := (p_payload ->> 'businessId')::uuid;
   end if;
@@ -513,6 +521,14 @@ begin
       using errcode = '42501';
   end if;
 
+  if v_owner is not null and not exists (
+    select 1 from public.profiles p
+    where p.id = v_owner and p.status = 'active'
+  ) then
+    raise exception 'Opportunity owner must be an active KP member'
+      using errcode = '22023';
+  end if;
+
   if nullif(btrim(p_payload ->> 'organizationId'), '') is not null then
     v_org := (p_payload ->> 'organizationId')::uuid;
   end if;
@@ -648,6 +664,14 @@ begin
       using errcode = '42501';
   end if;
 
+  if not exists (
+    select 1 from public.profiles p
+    where p.id = v_owner and p.status = 'active'
+  ) then
+    raise exception 'Project owner must be an active KP member'
+      using errcode = '22023';
+  end if;
+
   if nullif(btrim(p_payload ->> 'organizationId'), '') is not null then
     v_org := (p_payload ->> 'organizationId')::uuid;
   end if;
@@ -769,6 +793,14 @@ begin
   if v_owner is distinct from v_actor and not (select private.is_admin()) then
     raise exception 'Only an admin can assign a decision to another owner'
       using errcode = '42501';
+  end if;
+
+  if not exists (
+    select 1 from public.profiles p
+    where p.id = v_owner and p.status = 'active'
+  ) then
+    raise exception 'Decision owner must be an active KP member'
+      using errcode = '22023';
   end if;
 
   v_mode := coalesce(

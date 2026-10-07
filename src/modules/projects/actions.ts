@@ -49,7 +49,7 @@ export async function createProject(formData: FormData) {
   });
 
   refreshProjects();
-  return result;
+  void result;
 }
 
 export async function setProjectStatus(projectId: string, status: string) {

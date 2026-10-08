@@ -6,7 +6,7 @@ export async function GET() {
  if(profile.role!=="admin")return Response.json({error:"Admin permission required."},{status:403});
  const db=await createClient();
  const tables=["businesses","tasks","organizations","people","relationships","pipelines","pipeline_stages","opportunities","opportunity_people","projects","client_engagements","client_engagement_history",
-  "project_messages", "project_progress_drafts", "project_progress_updates", "project_files", "project_notification_jobs","project_deliverables","deliverable_versions","deliverable_version_files","deliverable_reviews","deliverable_publications", "lead_import_batches", "lead_import_keys", "archive_events","staff_invitations","team_admin_events","decisions","chat_messages","knowledge_documents","knowledge_revisions","library_files","project_scope_versions","project_scope_approvals","activity_events","external_links"];
+  "project_messages", "project_progress_drafts", "project_progress_updates", "project_files", "project_notification_jobs","project_deliverables","deliverable_versions","deliverable_version_files","deliverable_reviews","deliverable_publications", "lead_import_batches", "lead_import_keys", "archive_events","staff_invitations","team_admin_events","decisions","chat_messages","knowledge_documents","knowledge_revisions","library_files","project_scope_versions","project_scope_approvals","production_gate_approvals","production_stage_events","activity_events","external_links"];
  try {
   const entries=await Promise.all(tables.map(async table=>{
    const rows:unknown[]=[];

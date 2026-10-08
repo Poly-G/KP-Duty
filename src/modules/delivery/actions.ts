@@ -55,3 +55,29 @@ export async function approveScope(data:FormData){
  const {error}=await db.rpc("kp_approve_scope",{p_scope:scope,p_client_name:z.string().trim().min(1).max(200).parse(data.get("client_name")),p_client_email:z.email().max(320).parse(data.get("client_email")),p_evidence:z.string().trim().min(5).max(10000).parse(data.get("evidence"))});
  if(error)throw new Error(error.message);refresh(business,project);
 }
+
+export async function recordProductionGate(data:FormData){
+ await requireAdminIdentity();const db=await createClient();
+ const project=uuid.parse(data.get('project_id'));const business=z.enum(['solta','snd']).parse(data.get('business'));
+ if(!await getDelivery(project,business))throw new Error('Project unavailable.');
+ const kind=z.enum(['brand_direction','copy','qa','launch','handoff']).parse(data.get('kind'));
+ const {productionGateLabels,qaChecks}=await import('./production');
+ if(data.get('confirmed')!=='on'||data.get('confirmation')!==`APPROVE ${productionGateLabels[kind].toUpperCase()}`)throw new Error('Confirm this exact production approval.');
+ let evidence=z.string().trim().min(5).max(9000).parse(data.get('evidence'));
+ if(kind==='qa'){
+  if(qaChecks.some((_,i)=>data.get(`qa_${i}`)!=='on'))throw new Error('Complete every applicable QA check.');
+  evidence+=`\n\nQA checklist confirmed:\n${qaChecks.map(c=>`- ${c}`).join('\n')}`;
+ }
+ const {error}=await db.rpc('kp_record_production_gate',{p_id:uuid.parse(data.get('request_id')),p_project:project,p_kind:kind,p_version:uuid.parse(data.get('version_id')),p_context:z.string().regex(/^[a-f0-9]{32}$/).parse(data.get('context')),p_evidence:evidence});
+ if(error)throw new Error(error.message);refresh(business,project);
+}
+export async function advanceProduction(data:FormData){
+ await requireAdminIdentity();const db=await createClient();
+ const project=uuid.parse(data.get('project_id'));const business=z.enum(['solta','snd']).parse(data.get('business'));
+ if(!await getDelivery(project,business))throw new Error('Project unavailable.');
+ const stage=z.enum(['visual','build','qa','launch','handoff','complete']).parse(data.get('stage'));
+ const {productionStageLabels}=await import('./production');
+ if(data.get('confirmed')!=='on'||data.get('confirmation')!==`MOVE ${productionStageLabels[stage].toUpperCase()}`)throw new Error('Confirm the production stage.');
+ const {error}=await db.rpc('kp_advance_production',{p_id:uuid.parse(data.get('request_id')),p_project:project,p_stage:stage,p_context:z.string().regex(/^[a-f0-9]{32}$/).parse(data.get('context')),p_evidence:z.string().trim().min(5).max(10000).parse(data.get('evidence'))});
+ if(error)throw new Error(error.message);refresh(business,project);
+}

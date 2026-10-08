@@ -1,3 +1,4 @@
+import {ProductionControls} from "@/components/projects/production-controls";
 import {ProjectScope} from "@/components/projects/project-scope";
 import {OnboardingEditor} from "@/components/projects/onboarding-editor";
 import Link from "next/link";
@@ -37,6 +38,6 @@ export default async function DeliveryPage({params}:{params:Promise<{business:st
   </ActionForm>
   {issues.length?<ul className="mt-5 list-disc space-y-2 pl-5 text-sm text-[var(--muted)]">{issues.map(issue=><li key={issue}>{issue}</li>)}</ul>:<p className="mt-5 text-sm">Readiness checks complete.</p>}
   {e.started_at?<p className="mt-4 text-sm">Start approval recorded {new Date(e.started_at).toLocaleDateString("en-US",{timeZone:"UTC"})}.</p>:admin?<ActionForm key={`start-${e.revision}`} action={saveClientDelivery} className="mt-5">{hidden("start")}<button disabled={issues.length>0} type="submit" className="rounded-lg bg-[var(--text)] px-4 py-2 text-sm text-white disabled:opacity-40">Approve and start delivery</button></ActionForm>:null}
-  </section><ProjectCollaboration id={id} business={business}/><ProjectDeliverables id={id} business={business} ownerId={project.owner.id} requirements={fields}/><BillingPlaceholder/>
+  </section><ProductionControls id={id} business={business} admin={admin} service={e.service}/><ProjectCollaboration id={id} business={business}/><ProjectDeliverables id={id} business={business} ownerId={project.owner.id} requirements={fields}/><BillingPlaceholder/>
  </>;
 }

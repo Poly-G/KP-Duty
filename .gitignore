@@ -9,3 +9,6 @@ build
 next-env.d.ts
 .DS_Store
 *.pem
+
+# Supabase CLI local version cache
+supabase/.temp/

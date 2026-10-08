@@ -1,0 +1,45 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {randomUUID} from 'node:crypto';
+const {PGlite}=await import(process.env.PGLITE_TEST_PACKAGE || '@electric-sql/pglite');
+const db=new PGlite();
+const admin=randomUUID(),team=randomUUID(),disabled=randomUUID(),biz=randomUUID(),otherbiz=randomUUID(),org=randomUUID(),person=randomUUID(),opp=randomUUID(),opp2=randomUUID(),otheropp=randomUUID(),norg=randomUUID(),contact=randomUUID(),attempt=randomUUID(),attempt2=randomUUID();
+await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create schema private;
+grant usage on schema public,auth,private to authenticated;grant usage on schema public to service_role;
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+create table profiles(id uuid primary key,role text,status text);
+create function private.is_active_member() returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.profiles where id=auth.uid() and status='active')$$;
+create function private.is_admin() returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.profiles where id=auth.uid() and role='admin' and status='active')$$;
+create table businesses(id uuid primary key,slug text,is_active boolean);
+create table organizations(id uuid primary key,archived_at timestamptz);
+create table people(id uuid primary key,organization_id uuid,archived_at timestamptz);
+create table opportunities(id uuid primary key,business_id uuid,organization_id uuid,archived_at timestamptz);
+insert into profiles values('${admin}','admin','active'),('${team}','team_member','active'),('${disabled}','admin','disabled');
+insert into businesses values('${biz}','nex',true),('${otherbiz}','solta',true);
+insert into organizations values('${org}',null);insert into people values('${person}','${org}',null);
+insert into opportunities values('${opp}','${biz}','${org}',null),('${opp2}','${biz}','${org}',null),('${otheropp}','${otherbiz}','${org}',null);`);
+await db.exec(await readFile(new URL('../../supabase/migrations/20261008221703_nex_provider_receiver.sql',import.meta.url),'utf8'));
+async function user(id){await db.exec(`reset role;set role authenticated;select set_config('request.jwt.claim.sub','${id}',false);`);}
+async function link(a=attempt,o=opp,c=contact,p=person){return db.query('select kp_link_nex_provider($1,$2,$3,$4,$5,$6)',[norg,c,a,org,p,o]);}
+await user(team);await assert.rejects(link(),/admin/);await user(disabled);await assert.rejects(link(),/admin/);await user(admin);
+await assert.rejects(link(attempt,otheropp),/live Nex/);await assert.rejects(link(attempt,opp,null,person),/Invalid/);await link();await link();await link(attempt2,opp2);
+await assert.rejects(link(attempt,opp2),/unique|conflict/);
+await db.exec('reset role;set role service_role;');
+const base={organizationId:norg,contactId:contact,attemptId:attempt,revision:1,admission:'approved_preview',listingReadiness:'preview_ready',representation:'unrepresented',disposition:'active',mergedIntoOrganizationId:null,onboardingPhase:'ready_for_outreach',onboardedAt:null,contactStatus:'contactable',organizationNoContact:false};
+const envelope=(p=base,eid=randomUUID())=>({schemaVersion:1,source:'nexproviders',target:'kp',entityType:'provider_onboarding_attempt',eventType:'provider_snapshot',eventId:eid,occurredAt:'2026-10-08T00:00:00.000Z',payload:p});
+async function receive(e){return (await db.query('select kp_receive_nex_provider($1) result',[JSON.stringify(e)])).rows[0].result;}
+for(const e of [envelope({...base,notes:'PRIVATE'}),{...envelope(),source:null},{...envelope(),occurredAt:null},envelope({...base,contactStatus:null}),envelope({...base,revision:1.5}),envelope({...base,organizationId:'name'}),envelope({...base,onboardingPhase:'onboarded',onboardedAt:'2026-02-30T00:00:00.000Z'}),envelope({...base,attemptId:randomUUID()})])await assert.rejects(receive(e));
+const first=envelope();assert.equal(await receive(first),'applied');assert.equal(await receive(first),'duplicate');await assert.rejects(receive({...first,payload:{...base,contactStatus:'dnc'}}),/collision/);
+await assert.rejects(receive(envelope({...base,contactStatus:'dnc'})),/revision collision/);
+assert.equal(await receive(envelope({...base,revision:2,contactStatus:'dnc'})),'applied');assert.equal(await receive(envelope()),'stale');
+await assert.rejects(receive(envelope({...base,attemptId:attempt2})),/active attempt/);
+const success={...base,revision:3,onboardingPhase:'onboarded',onboardedAt:'2026-10-08T00:00:00.000Z'};assert.equal(await receive(envelope(success)),'applied');
+assert.equal(await receive(envelope({...success,revision:4,listingReadiness:'in_research'})),'applied');
+await assert.rejects(receive(envelope({...base,revision:5})),/cannot reopen/);await assert.rejects(receive(envelope({...success,revision:5,onboardedAt:'2026-10-09T00:00:00.000Z'})),/cannot reopen/);
+assert.equal(await receive(envelope({...base,attemptId:attempt2})),'applied');
+assert.equal(await receive(envelope({...base,attemptId:attempt2,revision:2,onboardingPhase:'not_onboarded'})),'applied');await assert.rejects(receive(envelope({...base,attemptId:attempt2,revision:3})),/cannot reopen/);
+await assert.rejects(db.query('select * from nex_provider_receipts'),/permission denied/);
+await user(team);assert.equal((await db.query('select * from nex_provider_snapshots')).rows.length,2);await assert.rejects(receive(envelope()),/permission denied/);await assert.rejects(db.query('delete from nex_provider_snapshots'),/permission denied/);
+await user(disabled);assert.equal((await db.query('select * from nex_provider_snapshots')).rows.length,0);
+await db.exec('reset role;set role anon;');await assert.rejects(receive(envelope()),/permission denied/);await assert.rejects(db.query('select * from nex_provider_snapshots'),/permission denied/);
+await db.close();console.log('Nex receiver database checks passed: explicit scoped links, admin/live membership, strict allowlist, replay/revision collisions, stale delivery, suppression, terminal retention, sibling attempts and worker-only ingestion.');

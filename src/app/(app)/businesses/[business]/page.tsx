@@ -18,6 +18,7 @@ export default async function BusinessWorkspacePage({ params }: { params: Promis
       <PageHeading eyebrow="Business workspace" title="Nex" description="Provider recruitment, shared follow-up, and backend project work." />
       <div className="mb-7 flex flex-wrap gap-3">
         <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href="/crm/nex">Provider pipeline · {pipeline.opportunities.length}</Link>
+        <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href="/businesses/nex/integration">Provider record links</Link>
         <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href="/projects?business=nex">Manage projects · {projects.length}</Link>
         <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href="/work">Open work</Link>
         <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href="/library/82359a2b-de51-4e8f-b673-b624a144e624">CRM ownership guide</Link>

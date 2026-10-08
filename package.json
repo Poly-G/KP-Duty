@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "node --test tests/*.test.mjs && node tests/database/client-delivery.mjs && node tests/database/project-collaboration.mjs && node tests/database/deliverable-reviews.mjs && node tests/database/service-intake.mjs && node tests/database/lead-imports-archive.mjs && node tests/database/team-administration.mjs && node tests/database/library-files.mjs && node tests/database/commercial-scopes.mjs && node tests/database/production-gates.mjs && node tests/database/chat-inbox.mjs && node tests/database/portal-requests.mjs",
+    "test": "node --test tests/*.test.mjs && node tests/database/client-delivery.mjs && node tests/database/project-collaboration.mjs && node tests/database/deliverable-reviews.mjs && node tests/database/service-intake.mjs && node tests/database/lead-imports-archive.mjs && node tests/database/team-administration.mjs && node tests/database/library-files.mjs && node tests/database/commercial-scopes.mjs && node tests/database/production-gates.mjs && node tests/database/chat-inbox.mjs && node tests/database/portal-requests.mjs && node tests/database/nex-provider-receiver.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

@@ -21,7 +21,7 @@ const nav = [
   { href: "/work", label: "Work", icon: ListTodo },
   { href: "/businesses/solta", label: "Solta", icon: Building2 },
   { href: "/businesses/snd", label: "Sent & Delivered", icon: Building2 },
-  { href: "/businesses/nex", label: "Nex · paused", icon: Building2 },
+  { href: "/businesses/nex", label: "Nex", icon: Building2 },
   { href: "/crm", label: "All relationships", icon: ContactRound },
   { href: "/projects", label: "Projects", icon: BriefcaseBusiness },
   { href: "/decisions", label: "Decisions", icon: Gavel },

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { parseProviderSnapshot, prepareProviderEnvelope, isProviderOutboundEligible } from "../src/modules/integrations/nex/provider-contract.ts";
+import { parseProviderSnapshot, prepareProviderEnvelope, isProviderOutboundEligible, parseProviderEnvelope, parseProviderOperations } from "../src/modules/integrations/nex/provider-contract.ts";
 
 const org = "123e4567-e89b-42d3-a456-426614174000";
 const contact = "123e4567-e89b-42d3-a456-426614174001";
@@ -72,4 +72,14 @@ describe("KP provider boundary", () => {
     }
     assert.throws(() => prepareProviderEnvelope(org, new Date("invalid"), valid));
   });
+});
+
+const operations = {outreachStatus:"active",endReason:null,stalled:true,stallPhase:"outreach",stalledSince:"2026-10-05T00:00:00.000Z",lastTouchAt:"2026-10-02T00:00:00.000Z",nextActionDueAt:"2026-10-12T00:00:00.000Z",openedAt:"2026-10-01T00:00:00.000Z",closedAt:null,attemptNumber:1,rulesVersion:1,asOfAt:"2026-10-08T00:00:00.000Z"};
+it("accepts explicit v2 operating facts while retaining strict v1",()=>{
+ const base=prepareProviderEnvelope(org,new Date("2026-10-08T00:00:00.000Z"),valid);
+ const event={...base,schemaVersion:2,payload:{...valid,operations}};
+ assert.equal(parseProviderEnvelope(event).payload.operations.stallPhase,"outreach");
+ assert.throws(()=>parseProviderEnvelope({...event,schemaVersion:1}));
+ assert.throws(()=>parseProviderEnvelope({...event,schemaVersion:3}));
+ for(const extra of [{notes:"private"},{stalled:false},{endReason:"diagnosis"},{attemptNumber:0},{closedAt:"2026-10-07T00:00:00.000Z"},{asOfAt:"2026-09-30T00:00:00.000Z"}]) assert.throws(()=>parseProviderOperations({...operations,...extra}));
 });

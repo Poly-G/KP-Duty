@@ -94,11 +94,18 @@ export async function getBusinessPipeline(
   if (oppError)
     throw new Error(`Unable to load opportunities: ${oppError.message}`);
 
+  const records = (opportunities ?? []) as unknown as Opportunity[];
+  if (slug === "nex" && records.length) {
+    const links = await supabase.from("nex_provider_attempts").select("kp_opportunity_id,nex_attempt_id").in("kp_opportunity_id", records.map(o => o.id));
+    if (links.error) throw new Error("Unable to verify Nex record ownership");
+    const byOpportunity = new Map((links.data ?? []).map(row => [row.kp_opportunity_id, row.nex_attempt_id]));
+    for (const record of records) record.nexAttemptId = byOpportunity.get(record.id);
+  }
   return {
     business: business as BusinessPipeline["business"],
     pipeline: pipeline as BusinessPipeline["pipeline"],
     stages: (stages ?? []) as unknown as PipelineStage[],
-    opportunities: (opportunities ?? []) as unknown as Opportunity[],
+    opportunities: records,
   };
 }
 

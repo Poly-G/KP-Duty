@@ -22,3 +22,11 @@ test('accepted results acknowledge retries and errors expose no raw content',asy
   const res=await receiveProviderRequest(request(),config,async()=>{throw error;});assert.equal(res.status,status);assert.ok(!(await res.text()).includes('PRIVATE'));
  }
 });
+test('v2 operating updates require independent activation and preserve v1',async()=>{
+ const operations={outreachStatus:'responded',endReason:null,stalled:false,stallPhase:null,stalledSince:null,lastTouchAt:null,nextActionDueAt:null,openedAt:'2026-10-01T00:00:00.000Z',closedAt:null,attemptNumber:1,rulesVersion:1,asOfAt:'2026-10-08T00:00:00.000Z'};
+ const v2={...event,schemaVersion:2,payload:{...event.payload,operations}};
+ let calls=0;
+ assert.equal((await receiveProviderRequest(request(v2),config,async()=>{calls++;return 'applied';})).status,503);assert.equal(calls,0);
+ assert.equal((await receiveProviderRequest(request(v2),{...config,operationsEnabled:'true'},async e=>{assert.equal(e.schemaVersion,2);calls++;return 'applied';})).status,200);assert.equal(calls,1);
+ assert.equal((await receiveProviderRequest(request({...v2,payload:{...v2.payload,operations:{...operations,notes:'PRIVATE'}}}),{...config,operationsEnabled:'true'},async()=>{calls++;return 'applied';})).status,400);assert.equal(calls,1);
+});

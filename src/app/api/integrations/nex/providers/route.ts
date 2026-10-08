@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const config = {
     enabled: process.env.NEX_PROVIDER_RECEIVER_ENABLED,
+    operationsEnabled: process.env.NEX_PROVIDER_OPERATIONS_ENABLED,
     token: process.env.NEX_PROVIDER_RECEIVER_TOKEN,
     databaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
     databaseSecret: process.env.KP_INTEGRATION_SUPABASE_SECRET,

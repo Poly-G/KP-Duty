@@ -1,0 +1,5 @@
+# Library originals
+
+Guides can retain their supplied PDF and logo ZIP as private attachments. Admins upload bounded files (2 MB); active staff download through an authenticated attachment route. Archives are inspected for bounded entries and inflated size, permitted image/text/PDF filenames and safe paths; ZIP contents are never extracted or executed by KP. SVGs remain inside the downloaded archive and are not rendered as page content. Byte hashes deduplicate identical attachments per guide. Original bytes and ready metadata are immutable; later files are retained separately, not overwritten. Storage reservations enforce matching admin actor and document/file paths. Anonymous, disabled and client-only identities have no storage access.
+
+The Library Brand guides cards link to current supplied brand-guide documents independent of the title search. Text is stored in the existing versioned knowledge library so chats can read it; the supplied PDF remains the authoritative formatted original. Company backup includes attachment metadata, but file bytes still need a separate private storage export.

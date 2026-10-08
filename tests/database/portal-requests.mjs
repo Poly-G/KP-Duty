@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+// PGLITE_TEST_PACKAGE may point to an isolated test-runtime install outside the app.
+const {PGlite}=await import(process.env.PGLITE_TEST_PACKAGE || '@electric-sql/pglite');
+const db=new PGlite();
+await db.exec(`
+create role anon; create role authenticated;
+create schema auth; create schema private;
+grant usage on schema auth,private,public to authenticated;
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+create table public.profiles(id uuid primary key,role text,status text);
+create table public.businesses(id uuid primary key,slug text,is_active boolean);
+create table public.organizations(id uuid primary key,name text);
+create table public.projects(id uuid primary key,business_id uuid references businesses,organization_id uuid references organizations,name text,owner_id uuid references profiles,status text default 'planned',phase text,archived_at timestamptz,created_by uuid default auth.uid());
+create function private.is_active_member() returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.profiles where id=auth.uid() and status='active')$$;
+create function private.is_admin() returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.profiles where id=auth.uid() and status='active' and role='admin')$$;
+grant select on profiles,businesses,organizations to authenticated;
+grant select,insert,update on projects to authenticated;
+insert into profiles values ('00000000-0000-4000-8000-000000000001','admin','active'),('00000000-0000-4000-8000-000000000002','team_member','active'),('00000000-0000-4000-8000-000000000003','team_member','disabled');
+insert into businesses values ('10000000-0000-4000-8000-000000000001','solta',true),('10000000-0000-4000-8000-000000000002','snd',true),('10000000-0000-4000-8000-000000000003','nex',false);
+insert into organizations values ('20000000-0000-4000-8000-000000000001','Sample Company');
+`);
+
+await db.exec(await readFile(new URL('../../supabase/migrations/20261007190022_client_delivery_foundation.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../../supabase/migrations/20261008153139_portal_requests.sql',import.meta.url),'utf8'));
+const project='30000000-0000-4000-8000-000000000001';
+const request='40000000-0000-4000-8000-000000000001';
+async function user(n){await db.exec(`reset role;set role authenticated;select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-00000000000${n}',false);`);}
+async function submit(id=request,title='Improve contact form'){return db.query('select kp_submit_portal_request($1,$2,$3,$4,$5)',[id,project,'feature',title,'Add a sample field']);}
+await user(1);
+await db.query('select kp_create_client_delivery($1,$2,$3,$4,$5)',[project,'solta','20000000-0000-4000-8000-000000000001','Demo','website']);
+await db.query('select kp_create_client_delivery($1,$2,$3,$4,$5)',['30000000-0000-4000-8000-000000000002','snd','20000000-0000-4000-8000-000000000001','Sent demo','snd']);
+await assert.rejects(db.query("select kp_submit_portal_request(gen_random_uuid(),$1,'feature','Wrong business','Sample')",['30000000-0000-4000-8000-000000000002']),/Active Solta/);
+await user(2);await submit();await submit();
+assert.equal((await db.query('select count(*)::int as n from portal_requests')).rows[0].n,1);
+assert.equal((await db.query('select disposition from portal_requests')).rows[0].disposition,'review_plan');
+await assert.rejects(submit(request,'Changed retry'),/key already used/);
+await assert.rejects(submit('40000000-0000-4000-8000-000000000002','   '),/check constraint/);
+await assert.rejects(db.query("update portal_requests set title='Forged' where id=$1",[request]),/permission denied/);
+assert.equal((await db.query("update portal_requests set status='resolved',response='Denied',revision=2 where id=$1 returning id",[request])).rows.length,0);
+await assert.rejects(db.query("insert into project_request_policies(project_id,evidence) values($1,'Fake terms')",[project]),/Admin/);
+await assert.rejects(db.query("insert into portal_requests(id,project_id,kind,title,details,submitted_by) values(gen_random_uuid(),$1,'feature','Fake','Fake','00000000-0000-4000-8000-000000000001')",[project]),/Invalid request/);
+await user(1);
+await db.query("insert into project_request_policies(project_id,feature_rule,bug_rule,evidence) values($1,'quote_required','included','Approved test terms')",[project]);
+const second='40000000-0000-4000-8000-000000000003';await submit(second);
+assert.equal((await db.query('select disposition from portal_requests where id=$1',[second])).rows[0].disposition,'review_quote');
+await db.query("update project_request_policies set feature_rule='included',revision=2 where project_id=$1",[project]);
+assert.equal((await db.query('select disposition from portal_requests where id=$1',[second])).rows[0].disposition,'review_quote');
+await assert.rejects(db.query("update project_request_policies set feature_rule='unconfigured',revision=2 where project_id=$1",[project]),/reload/);
+await assert.rejects(db.query("update portal_requests set status='resolved',revision=2 where id=$1",[request]),/Explain/);
+await db.query("update portal_requests set status='reviewing',response='Checking scope',revision=2 where id=$1",[request]);
+await assert.rejects(db.query("update portal_requests set status='waiting',revision=2 where id=$1",[request]),/reload/);
+await db.query("update portal_requests set status='resolved',response='Reviewed and explained',revision=3 where id=$1",[request]);
+assert.equal((await db.query('select count(*)::int as n from portal_request_history where request_id=$1',[request])).rows[0].n,3);
+assert.equal((await db.query('select count(*)::int as n from project_request_policy_history')).rows[0].n,2);
+await assert.rejects(db.query('delete from project_request_policy_history'),/permission denied/);
+await assert.rejects(db.query('delete from portal_requests where id=$1',[request]),/permission denied/);
+await assert.rejects(db.query('delete from portal_request_history where request_id=$1',[request]),/permission denied/);
+await db.exec('reset role;');await db.query('update projects set archived_at=now() where id=$1',[project]);await user(1);
+await assert.rejects(submit('40000000-0000-4000-8000-000000000004'),/Active Solta/);
+await user(3);assert.equal((await db.query('select * from portal_requests')).rows.length,0);await assert.rejects(submit(),/Active staff/);
+await db.exec('reset role;set role anon;');await assert.rejects(db.query('select * from portal_requests'),/permission denied/);
+await db.close();console.log('Portal request checks passed: durable history, retry safety, immutable submission, policy snapshot, stale revisions, member/admin boundary, no impersonation, disabled/anonymous denial.');

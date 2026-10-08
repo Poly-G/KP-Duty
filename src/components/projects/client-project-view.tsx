@@ -1,8 +1,11 @@
 import {DeliverableClientView} from './deliverable-client-view';
+import {SoltaPortal} from './solta-portal';
 import type {ClientDeliverable} from '@/modules/deliverables/types';
-import type {Progress,ProjectFile,ProjectMessage} from '@/modules/project-collaboration/queries';
-export function ClientProjectView({business,name,progress,files,messages,deliverables=[]}:{business:string;name:string;progress:Progress|null;files:ProjectFile[];messages:ProjectMessage[];deliverables?:ClientDeliverable[]}){
+import type {Progress} from '@/modules/project-collaboration/queries';
+import type {PortalFile,PortalMessage} from '@/modules/client-portal/projection';
+export function ClientProjectView({business,name,progress,files,messages,deliverables=[]}:{business:string;name:string;progress:Progress|null;files:PortalFile[];messages:PortalMessage[];deliverables?:ClientDeliverable[]}){
  const brand=business==='solta'?'Solta':'Sent & Delivered';
+ if(business==='solta')return <SoltaPortal name={name} progress={progress} files={files} messages={messages} deliverables={deliverables}/>;
  return <section className="rounded-2xl border border-[var(--border)] bg-white p-6 text-slate-900">
   <p className="text-sm font-semibold tracking-widest uppercase">{brand}</p><h1 className="mt-5 text-3xl font-semibold">{name}</h1>
   <h2 className="mt-8 text-xl font-medium">Your progress</h2>

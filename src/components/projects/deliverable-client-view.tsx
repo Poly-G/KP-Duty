@@ -1,6 +1,6 @@
 import type {ClientDeliverable} from '@/modules/deliverables/types';
-import type {ProjectFile} from '@/modules/project-collaboration/queries';
-export function DeliverableClientView({deliverables,files,practice=false}:{deliverables:ClientDeliverable[];files:ProjectFile[];practice?:boolean}) {
+import type {PortalFile} from '@/modules/client-portal/projection';
+export function DeliverableClientView({deliverables,files,practice=false}:{deliverables:ClientDeliverable[];files:PortalFile[];practice?:boolean}) {
   if(!deliverables.length) return <p className="mt-3 text-slate-600">No deliverables published for review yet.</p>;
   return <div className="mt-4 space-y-5">{deliverables.map(d=><article key={d.id} className="rounded-xl border border-slate-200 p-4">
     <h3 className="font-medium">{d.title}</h3>

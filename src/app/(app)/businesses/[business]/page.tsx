@@ -19,6 +19,7 @@ export default async function BusinessWorkspacePage({ params }: { params: Promis
       <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href={`/crm/${business}`}>Open sales pipeline · {pipeline.opportunities.length}</Link>
       <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href={`/projects?business=${business}`}>Manage projects · {projects.length}</Link>
       <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href={`/businesses/${business}/preview`}>Try a sample project</Link>
+      {business==='solta'?<><Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href="/businesses/solta/requests">Client request queue</Link><Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href="/client-preview/solta/demo">Solta portal design preview</Link></>:null}
     </div>
     <section className="mb-7">
       <h2 className="mb-3 font-medium">Companies & clients</h2>

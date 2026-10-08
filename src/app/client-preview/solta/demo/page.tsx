@@ -1,0 +1,8 @@
+import {SoltaOnboardingPreview} from '@/components/projects/solta-onboarding-preview';
+import {requireActiveIdentity} from '@/lib/auth/current-user';
+import {SoltaPortal} from '@/components/projects/solta-portal';
+export const metadata={title:'Solta · Portal preview'};
+export default async function SoltaDemo(){
+ await requireActiveIdentity();
+ return <main className="mx-auto max-w-6xl p-3 sm:p-6"><aside className="mb-4 text-sm">Staff design preview · Sample content · Client login and payments are not connected.</aside><SoltaPortal practice name="Your website, taking shape." progress={{revision:1,current_work:'We’re shaping your first website direction from the information you shared.',next_action:'Review the sample homepage direction below. Your feedback helps us take the next step.',milestones:[{title:'Tell us about your business',status:'complete'},{title:'Review your website direction',status:'in_progress'},{title:'Build and check your website',status:'pending'},{title:'Your website goes live',status:'pending'}]}} files={[]} messages={[{id:'demo-message',audience:'client',body:'Thanks for sharing your goals. We’ve put together the first direction for your homepage. Take a look and tell us what feels right and what you’d like changed.',created_at:'2026-10-08T12:00:00Z'}]} deliverables={[{id:'demo-design',title:'Homepage direction',versions:[{id:'demo-v1',version:1,description:'Sample: a clear introduction to your business, the services you offer, and an easy way for customers to get in touch.',file_ids:[],published_at:'2026-10-08T12:00:00Z',outcome:null,feedback:null}]}]}><SoltaOnboardingPreview/></SoltaPortal></main>;
+}

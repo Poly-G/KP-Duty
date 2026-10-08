@@ -1,3 +1,4 @@
+import {ProjectRequestPolicy} from '@/components/projects/project-request-policy';
 import {ProductionControls} from "@/components/projects/production-controls";
 import {ProjectScope} from "@/components/projects/project-scope";
 import {OnboardingEditor} from "@/components/projects/onboarding-editor";
@@ -29,6 +30,7 @@ export default async function DeliveryPage({params}:{params:Promise<{business:st
    <OnboardingEditor key={e.revision} engagement={e} business={business} companyName={project.organization.name}/>
    <ActionForm key={`submit-${e.revision}`} action={saveClientDelivery} className="mt-4 space-y-3">{hidden("submit")}{Object.keys(fields).map(key=><input key={key} type="hidden" name={key} value={e.answers[key]||""}/>)}<button type="submit" disabled={requiredOnboardingKeys(e.service,e.template_version,e.answers).some(key=>!e.answers[key]?.trim())} className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-40">Submit saved onboarding for review</button><p className="text-sm text-[var(--muted)]">{e.submitted_at?"Submitted for review. Editing answers resets the review.":"Save all answers before submitting."}</p></ActionForm>
   </section>
+  {business==='solta'?<ProjectRequestPolicy project={id} admin={admin}/>:null}
   <ProjectScope id={id} business={business} admin={admin} required={!!e.scope_required}/>
   <section className="mb-7 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5"><h2 className="font-medium">Readiness & approvals</h2><ActionForm key={`review-${e.revision}`} action={saveClientDelivery} className="mt-4 space-y-4">{hidden("review")}
    <label className="flex gap-2 text-sm"><input type="checkbox" name="onboarding_reviewed" defaultChecked={e.onboarding_reviewed} disabled={!e.submitted_at}/>Onboarding reviewed</label>

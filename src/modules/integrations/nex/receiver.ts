@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { parseProviderEnvelope } from "./provider-contract.ts";
 
-export type ReceiverConfig = { enabled?: string; token?: string; databaseUrl?: string; databaseSecret?: string };
+export type ReceiverConfig = { enabled?: string; operationsEnabled?: string; token?: string; databaseUrl?: string; databaseSecret?: string };
 export class ProviderEventConflict extends Error {}
 export function receiverReady(config: ReceiverConfig): boolean {
   return config.enabled === "true" && (config.token?.length ?? 0) >= 32 && !!config.databaseUrl && !!config.databaseSecret;
@@ -29,6 +29,7 @@ export async function receiveProviderRequest(request: Request, config: ReceiverC
     for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
     event = parseProviderEnvelope(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)));
   } catch { return Response.json({ error: "Invalid provider envelope" }, { status: 400 }); }
+  if (event.schemaVersion === 2 && config.operationsEnabled !== "true") return Response.json({ error: "Operating updates inactive" }, { status: 503 });
   try {
     const result = await ingest(event);
     if (!["applied", "stale", "duplicate"].includes(result)) throw new Error("Unexpected receiver result");

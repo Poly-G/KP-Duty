@@ -35,6 +35,7 @@ export type PipelineStage = {
 };
 
 export type Opportunity = {
+  nexAttemptId?: string;
   id: string;
   reference_code: string | null;
   name: string;

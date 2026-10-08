@@ -29,6 +29,7 @@ function OpportunityCard({
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: opportunity.id,
+      disabled: !!opportunity.nexAttemptId,
       data: { stageId: opportunity.stage_id },
     });
 
@@ -42,7 +43,7 @@ function OpportunityCard({
       )}
     >
       <div className="flex items-start gap-2">
-        <button
+        {!opportunity.nexAttemptId && <button
           type="button"
           aria-label="Drag opportunity"
           className="mt-0.5 cursor-grab rounded p-1 text-[var(--muted)] hover:bg-[var(--surface-subtle)] active:cursor-grabbing"
@@ -50,7 +51,7 @@ function OpportunityCard({
           {...listeners}
         >
           <GripVertical size={15} />
-        </button>
+        </button>}
 
         <button
           type="button"
@@ -58,6 +59,7 @@ function OpportunityCard({
           onClick={onOpen}
         >
           <p className="text-sm font-medium leading-5">{opportunity.name}</p>
+          {opportunity.nexAttemptId && <p className="mt-1 text-xs text-[var(--muted)]">Stage from Nex</p>}
           {opportunity.organization ? (
             <p className="mt-1 truncate text-xs text-[var(--muted)]">
               {opportunity.organization.name}
@@ -175,6 +177,10 @@ function OpportunityDetail({
         </div>
 
         <div className="mt-7 space-y-6">
+          {opportunity.nexAttemptId && <section className="rounded-xl border border-[var(--border)] p-4">
+            <p className="text-sm">Nex controls this onboarding stage. KP owns human follow-up.</p>
+            <a className="mt-2 inline-block text-sm underline" href={`/businesses/nex/integration#attempt-${opportunity.nexAttemptId}`}>View provider operating status</a>
+          </section>}
           <section>
             <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
               Do this next
@@ -298,7 +304,7 @@ export function OpportunityBoard({
     const opportunity = opportunities.find(
       (candidate) => candidate.id === opportunityId,
     );
-    if (!opportunity) return;
+    if (!opportunity || opportunity.nexAttemptId) return;
 
     const overId = String(over.id);
     const destinationStageId = overId.startsWith("stage:")

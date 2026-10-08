@@ -99,10 +99,14 @@ export function parseProviderEnvelope(value: unknown) {
   const input = value as Record<string, unknown>;
   const keys = ["schemaVersion", "source", "target", "entityType", "eventType", "eventId", "occurredAt", "payload"];
   if (Reflect.ownKeys(input).length !== keys.length || Reflect.ownKeys(input).some(key => typeof key !== "string" || !keys.includes(key))) return invalid();
-  if (input.schemaVersion !== 1 || input.source !== "nexproviders" || input.target !== "kp" || input.entityType !== "provider_onboarding_attempt" || input.eventType !== "provider_snapshot") return invalid();
+  if (![1, 2].includes(input.schemaVersion as number) || input.source !== "nexproviders" || input.target !== "kp" || input.entityType !== "provider_onboarding_attempt" || input.eventType !== "provider_snapshot") return invalid();
   const at = timestamp(input.occurredAt);
   if (!at) return invalid();
-  return prepareProviderEnvelope(id(input.eventId), new Date(at), input.payload);
+  if (input.schemaVersion === 1) return prepareProviderEnvelope(id(input.eventId), new Date(at), input.payload);
+  if (!input.payload || typeof input.payload !== "object" || Array.isArray(input.payload)) return invalid();
+  const { operations, ...base } = input.payload as Record<string, unknown>;
+  const prepared = prepareProviderEnvelope(id(input.eventId), new Date(at), base);
+  return Object.freeze({ ...prepared, schemaVersion: 2 as const, payload: Object.freeze({ ...prepared.payload, operations: parseProviderOperations(operations) }) });
 }
 
 /** Eligibility only; this neither schedules nor authorizes a send. */
@@ -112,3 +116,51 @@ export function isProviderOutboundEligible(snapshot: ProviderSnapshot): boolean 
     checked.contactStatus === "contactable" && checked.listingReadiness !== "in_research" &&
     checked.onboardingPhase !== "onboarded" && checked.onboardingPhase !== "not_onboarded";
 }
+
+/** KP preparation contract; Nex must accept its field semantics before enabling v2. */
+export type ProviderOperations = Readonly<{
+  outreachStatus: "not_eligible" | "ready" | "active" | "responded" | "paused" | "ended";
+  endReason: "completed" | "no_response" | "declined" | "contact_stop" | "organization_stop" | "organization_closed" | "organization_merged" | "superseded" | null;
+  stalled: boolean;
+  stallPhase: "outreach" | "responded" | "verifying" | "completing" | null;
+  stalledSince: string | null;
+  lastTouchAt: string | null;
+  nextActionDueAt: string | null;
+  openedAt: string;
+  closedAt: string | null;
+  attemptNumber: number;
+  rulesVersion: number;
+  asOfAt: string;
+}>;
+
+export function parseProviderOperations(value: unknown): ProviderOperations {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return invalid();
+  const p = value as Record<string, unknown>;
+  const keys = ["outreachStatus", "endReason", "stalled", "stallPhase", "stalledSince", "lastTouchAt", "nextActionDueAt", "openedAt", "closedAt", "attemptNumber", "rulesVersion", "asOfAt"];
+  if (Reflect.ownKeys(p).length !== keys.length || Reflect.ownKeys(p).some(k => typeof k !== "string" || !keys.includes(k))) return invalid();
+  for (const key of ["attemptNumber", "rulesVersion"]) if (!Number.isSafeInteger(p[key]) || (p[key] as number) < 1) return invalid();
+  if (typeof p.stalled !== "boolean") return invalid();
+  const result: ProviderOperations = {
+    outreachStatus: choice(p.outreachStatus, ["not_eligible", "ready", "active", "responded", "paused", "ended"]),
+    endReason: p.endReason === null ? null : choice(p.endReason, ["completed", "no_response", "declined", "contact_stop", "organization_stop", "organization_closed", "organization_merged", "superseded"] as const),
+    stalled: p.stalled,
+    stallPhase: p.stallPhase === null ? null : choice(p.stallPhase, ["outreach", "responded", "verifying", "completing"] as const),
+    stalledSince: timestamp(p.stalledSince), lastTouchAt: timestamp(p.lastTouchAt), nextActionDueAt: timestamp(p.nextActionDueAt),
+    openedAt: timestamp(p.openedAt) ?? invalid(), closedAt: timestamp(p.closedAt), asOfAt: timestamp(p.asOfAt) ?? invalid(),
+    attemptNumber: p.attemptNumber as number, rulesVersion: p.rulesVersion as number,
+  };
+  if ((result.outreachStatus === "ended") !== (result.endReason !== null && result.closedAt !== null) ||
+      (result.outreachStatus !== "ended" && (result.endReason !== null || result.closedAt !== null)) ||
+      result.stalled !== (result.stallPhase !== null && result.stalledSince !== null) ||
+      (!result.stalled && (result.stallPhase !== null || result.stalledSince !== null)) ||
+      (result.stalled && ["not_eligible", "ready", "paused", "ended"].includes(result.outreachStatus))) return invalid();
+  for (const date of [result.openedAt, result.closedAt, result.lastTouchAt, result.stalledSince]) {
+    if (date !== null && (date > result.asOfAt || date < result.openedAt)) return invalid();
+  }
+  return Object.freeze(result);
+}
+
+export const PROVIDER_PHASE_LABELS = {
+  ready_for_outreach: "Ready for outreach", outreach: "Outreach in progress", responded: "Responded", verifying: "Verifying",
+  completing: "Completing profile", onboarded: "Onboarded", not_onboarded: "Not onboarded",
+} as const;

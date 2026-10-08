@@ -30,8 +30,8 @@ export default async function BusinessCrmPage({
         eyebrow="CRM"
         title={board.business.name}
         description={
-          business === "nex" && !board.business.is_active
-            ? "Nex is parked, but the relationship structure is ready when KP reactivates it."
+          business === "nex"
+            ? "Linked provider stages come from Nex. KP manages recruitment activity and human follow-up. Unlinked records await identity review."
             : "Move opportunities as the relationship changes. The same company record can appear in another KP business without duplication."
         }
       />

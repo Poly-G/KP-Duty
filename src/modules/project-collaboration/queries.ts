@@ -12,7 +12,7 @@ export const getProjectCollaboration=cache(async function getProjectCollaboratio
   db.from('project_progress_updates').select('*').eq('project_id',id).order('published_at',{ascending:false}).limit(1),
   db.from('project_messages').select('id,audience,body,created_at,author_id,author:profiles!author_id(display_name)').eq('project_id',id).order('created_at',{ascending:false}).limit(100),
   db.from('project_files').select('id,series_id,version,name,state,audience,drive_url,created_at').eq('project_id',id).order('created_at',{ascending:false}).limit(100),
-  db.from('project_notification_jobs').select('id',{count:'exact',head:true}).eq('project_id',id)
+  db.from('project_notification_jobs').select('id',{count:'exact',head:true}).eq('project_id',id).eq('status','held')
  ]);
  for(const result of [draft,updates,messages,files,jobs])if(result.error)throw new Error(result.error.message);
  return {draft:draft.data as Progress|null,published:updates.data?.[0] as Progress|null,messages:(messages.data||[]) as unknown as ProjectMessage[],files:(files.data||[]) as ProjectFile[],heldNotifications:jobs.count||0};

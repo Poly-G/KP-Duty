@@ -23,3 +23,16 @@ test('Solta research headers preserve context, skip title rows and exclude dupli
  const rows=normalizeLeads(table.slice(2),'solta');assert.equal(rows[0].issue,null);assert.equal(rows[0].website,'');assert.equal(rows[0].business,'solta');assert.equal(rows[0].service,'Website');assert.match(rows[0].notes,/Outreach allowed\?: No — qualified only/);assert.match(rows[0].notes,/Public contact: 555-0100/);assert.match(rows[1].issue,/Duplicate/);
  assert.equal(suggestedHeaders(['Company','Destination Business'])[1],'business');
 });
+
+test('CSV tabs preserve column positions, TSV commas remain text and BOM quoted headers parse',()=>{
+ const csv=parseCsv('\uFEFF"Company",Website,Notes,Email\nAcme,acme.test,Research\twith tab,owner@acme.test');
+ assert.deepEqual(csv[1],['Acme','acme.test','Research\twith tab','owner@acme.test']);
+ const rows=normalizeLeads(csv,'solta');assert.equal(rows[0].email,'owner@acme.test');assert.equal(rows[0].issue,null);
+ assert.deepEqual(parseCsv('Company\tNotes\nAcme\tResearch, with comma')[1],['Acme','Research, with comma']);
+ assert.throws(()=>normalizeLeads(parseCsv('Company,Email\nAcme,owner@acme.test,unmapped'),'solta'),/more cells than the header/);
+ assert.throws(()=>parseCsv(Array(51).fill('a').join(',')),/50 columns/);
+});
+test('invalid combined research notes do not suppress a later valid duplicate',()=>{
+ const rows=normalizeLeads([['Company','Notes','Location'],['Acme','x'.repeat(9999),'Long location'],['Acme','Valid','Here']],'solta');
+ assert.match(rows[0].issue,/Combined/);assert.equal(rows[1].issue,null);
+});

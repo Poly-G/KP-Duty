@@ -8,14 +8,19 @@ export function findLeadHeader(table:string[][]):number{
  return table.slice(0,10).findIndex(row=>{const mapped=suggestedHeaders(row);return mapped.includes('company')&&mapped.filter(Boolean).length>=2;});
 }
 export function parseCsv(text:string):string[][]{
+ text=text.replace(/^\uFEFF/,'');
+ // Choose one delimiter from the header; tabs inside CSV cells are ordinary text.
+ let headerQuoted=false;let commas=0;let tabs=0;
+ for(let i=0;i<text.length;i++){const c=text[i];if(c==='"'){if(headerQuoted&&text[i+1]==='"')i++;else headerQuoted=!headerQuoted;}else if(!headerQuoted){if(c==='\n'||c==='\r')break;if(c===',')commas++;if(c==='\t')tabs++;}}
+ const delimiter=commas?',':tabs?'\t':',';
  const rows:string[][]=[];let row:string[]=[];let cell='';let quoted=false;let closed=false;
  for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'){if(text[i+1]==='"'){cell+='"';i++;}else{quoted=false;closed=true;}}else cell+=c;}
  else if(c==='"'){if(cell||closed)throw new Error('Invalid CSV quotes. Export the sheet as CSV again.');quoted=true;}
- else if(c===','||c==='\t'){row.push(cell);cell='';closed=false;}
+ else if(c===delimiter){row.push(cell);cell='';closed=false;}
  else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(cell);if(row.some(v=>v.trim()))rows.push(row);row=[];cell='';closed=false;}
  else{if(closed&&!/\s/.test(c))throw new Error('Invalid CSV after quoted cell.');if(!closed)cell+=c;}
  if(cell.length>10000||row.length>50||rows.length>501)throw new Error('Use up to 500 leads, 50 columns and 10,000 characters per cell.');
- }if(quoted)throw new Error('Unclosed CSV quote.');row.push(cell);if(row.some(v=>v.trim()))rows.push(row);return rows;
+ }if(quoted)throw new Error('Unclosed CSV quote.');row.push(cell);if(row.length>50)throw new Error('Use up to 50 columns.');if(row.some(v=>v.trim()))rows.push(row);if(rows.length>501)throw new Error('Use up to 500 leads.');return rows;
 }
 export function suggestBusiness(service:string):LeadBusiness|null{
  const solta=/\b(website|web design|branding|brand design|logo|less office|workflow automation|website care)\b/i.test(service);
@@ -36,6 +41,7 @@ export function normalizeLeads(table:string[][],selected:LeadBusiness,mapping?:s
  const recognized=headers.filter(Boolean);if(new Set(recognized).size!==recognized.length)throw new Error('Two columns map to the same field. Rename or remove one.');
  const seen=new Set<string>();
  return table.slice(1).map((cells,index)=>{
+  if(cells.length>headers.length)throw new Error(`Row ${index+2} has more cells than the header. Check the spreadsheet export.`);
   const data:Record<string,string>={};headers.forEach((key,i)=>{if(key)data[key]=(cells[i]||'').trim();});
   let issue:string|null=null;let domain='';let website=data.website||'';
   if(!data.company)issue='Company name is required.';
@@ -52,9 +58,9 @@ export function normalizeLeads(table:string[][],selected:LeadBusiness,mapping?:s
   const companyKey=(data.company||'').toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');
   const identities=[companyKey&&business+'|name:'+companyKey,domain&&business+'|domain:'+domain,data.email&&business+'|email:'+data.email.toLowerCase()].filter(Boolean) as string[];
   if(!issue&&identities.some(key=>seen.has(key)))issue='Duplicate in this sheet; only the first matching row is selected.';
-  if(!issue)identities.forEach(key=>seen.add(key));
   const notes=[data.notes||'',...Object.entries(researchColumns).filter(([key])=>data[key]).map(([key,label])=>`${label}: ${data[key]}`)].filter(Boolean).join('\n');
   if(notes.length>10000)issue='Combined research notes exceed 10,000 characters.';
+  if(!issue)identities.forEach(key=>seen.add(key));
   return {row:index+2,company:data.company||'',website,domain,email:data.email||'',contact:data.contact||'',phone:data.phone||'',service,source:data.source||'Spreadsheet research',source_url:data.source_url||'',notes,business,suggested,issue,override_reason:''};
  });
 }

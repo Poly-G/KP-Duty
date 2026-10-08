@@ -12,7 +12,22 @@ export default async function BusinessWorkspacePage({ params }: { params: Promis
   const workspace = await getBusinessWorkspace(business);
   if (!workspace) notFound();
   const { pipeline, projects, companies } = workspace;
-  if (business === "nex") return <><PageHeading eyebrow="Business workspace" title="Nex" description="Nex is paused. This space is reserved for when work resumes." /><EmptyPanel title="Paused" description="Client onboarding and delivery are not open for Nex." /></>;
+  if (business === "nex") {
+    if (!pipeline.business.is_active) return <><PageHeading eyebrow="Business workspace" title="Nex" description="Nex work is paused." /><EmptyPanel title="Paused" description="The provider CRM and project records are retained for when work resumes." /></>;
+    return <>
+      <PageHeading eyebrow="Business workspace" title="Nex" description="Provider recruitment, shared follow-up, and backend project work." />
+      <div className="mb-7 flex flex-wrap gap-3">
+        <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href="/crm/nex">Provider pipeline · {pipeline.opportunities.length}</Link>
+        <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href="/projects?business=nex">Manage projects · {projects.length}</Link>
+        <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href="/work">Open work</Link>
+        <Link className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm" href="/library/82359a2b-de51-4e8f-b673-b624a144e624">CRM ownership guide</Link>
+      </div>
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+        <h2 className="mb-2 font-medium">Nex backend work has resumed</h2>
+        <p className="text-sm text-[var(--muted)]">KP manages provider relationships and shared work. Nex manages Veteran and provider accounts, listing review and publication, and staff support access. Live CRM sync and public release follow their own acceptance checks.</p>
+      </section>
+    </>;
+  }
   return <>
     <PageHeading eyebrow="Business workspace" title={pipeline.business.name} description="Sales, client relationships, and delivery work for this business." />
     <div className="mb-7 flex flex-wrap gap-3">

@@ -21,10 +21,10 @@ export function onboardingFields(service:DeliveryService,version=1,answers:Recor
  return {...base,...expandedCommon,...expandedFields[service],...(service==='website'&&answers.branding_included==='yes'?{brand_context:"Brand context and direction needed",brand_constraints:"Brand constraints and intended uses"}:{}) ,optional_notes:"Anything else? (optional)"};
 }
 export function requiredOnboardingKeys(service:DeliveryService,version=1,answers:Record<string,string>={}):string[]{return Object.keys(onboardingFields(service,version,answers)).filter(key=>key!=='optional_notes');}
-export type Engagement = {id:string;service:DeliveryService;template_version:number;revision:number;answers:Record<string,string>;submitted_at:string|null;onboarding_reviewed:boolean;scope_approved:boolean;payment_required:boolean;payment_evidence:string|null;access_ready:boolean;capacity_ready:boolean;started_at:string|null;started_by:string|null};
+export type Engagement = {id:string;service:DeliveryService;template_version:number;revision:number;answers:Record<string,string>;submitted_at:string|null;onboarding_reviewed:boolean;scope_approved:boolean;scope_required?:boolean;payment_required:boolean;payment_evidence:string|null;access_ready:boolean;capacity_ready:boolean;started_at:string|null;started_by:string|null};
 export function readinessIssues(e:Engagement):string[]{
  const issues:string[]=[];
- if(!e.scope_approved)issues.push("Approve scope and terms");
+ if(!e.scope_approved)issues.push(e.scope_required?"Record approval of the current scope version":"Approve scope and terms");
  if(!e.submitted_at)issues.push("Submit onboarding");
  if(!e.onboarding_reviewed)issues.push("Review onboarding");
  if(e.payment_required&&!e.payment_evidence?.trim())issues.push("Verify required payment with evidence");

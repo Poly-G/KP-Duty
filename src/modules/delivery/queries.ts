@@ -7,5 +7,15 @@ export async function getDelivery(id:string,business:string){
  if(error)throw new Error(error.message); if(!project)return null;
  const {data:engagement,error:engagementError}=await db.from("client_engagements").select("*").eq("id",id).maybeSingle<Engagement>();
  if(engagementError)throw new Error(engagementError.message); if(!engagement)return null;
- return {project:project as unknown as {id:string;name:string;status:string;organization:{id:string;name:string};owner:{id:string;display_name:string};business:{slug:string;name:string}},engagement};
+ return {project:project as unknown as {id:string;name:string;status:string;organization:{id:string;name:string};owner:{id:string;display_name:string};business:{slug:string;name:string}},engagement:{...engagement,scope_required:engagement.scope_required||!engagement.started_at}};
+}
+
+export async function getScopes(id:string){
+ await requireActiveIdentity();const db=await createClient();
+ const {data:versions,error}=await db.from("project_scope_versions").select("*").eq("project_id",id).order("version",{ascending:false});
+ if(error)throw new Error(error.message);
+ const ids=(versions||[]).map(v=>v.id);
+ const {data:approvals,error:approvalError}=ids.length?await db.from("project_scope_approvals").select("*").in("scope_id",ids):{data:[],error:null};
+ if(approvalError)throw new Error(approvalError.message);
+ return {versions:(versions||[]) as import("./scopes").ScopeVersion[],approvals:(approvals||[]) as import("./scopes").ScopeApproval[]};
 }

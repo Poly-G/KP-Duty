@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { receiveProviderRequest } from "@/modules/integrations/nex/receiver";
+import { ProviderEventConflict, receiveProviderRequest } from "@/modules/integrations/nex/receiver";
 export const runtime = "nodejs";
 export async function POST(request: Request) {
   const config = {
@@ -11,7 +11,8 @@ export async function POST(request: Request) {
   return receiveProviderRequest(request, config, async event => {
     const client = createClient(config.databaseUrl!, config.databaseSecret!, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data, error } = await client.rpc("kp_receive_nex_provider", { p_envelope: event });
-    if (error || typeof data !== "string") throw new Error("Provider event not accepted");
+    if (error?.code === "P0001" || error?.code === "23505") throw new ProviderEventConflict("Provider event not accepted");
+    if (error || typeof data !== "string") throw new Error("Provider receiver unavailable");
     return data;
   });
 }

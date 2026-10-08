@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {receiveProviderRequest} from '../src/modules/integrations/nex/receiver.ts';
+import {ProviderEventConflict,receiveProviderRequest} from '../src/modules/integrations/nex/receiver.ts';
 import {prepareProviderEnvelope} from '../src/modules/integrations/nex/provider-contract.ts';
 const id='123e4567-e89b-42d3-a456-426614174000';
 const event=prepareProviderEnvelope(id,new Date('2026-10-08T00:00:00.000Z'),{organizationId:id,contactId:null,attemptId:id,revision:1,admission:'inbound_claim',listingReadiness:'in_research',representation:'claim_pending',disposition:'active',mergedIntoOrganizationId:null,onboardingPhase:'responded',onboardedAt:null,contactStatus:null,organizationNoContact:false});
@@ -18,5 +18,7 @@ test('auth, content type, payload bound and allowlist precede database',async()=
 });
 test('accepted results acknowledge retries and errors expose no raw content',async()=>{
  for(const result of ['applied','stale','duplicate'])assert.deepEqual(await (await receiveProviderRequest(request(),config,async e=>{assert.deepEqual(e,event);return result;})).json(),{result});
- const res=await receiveProviderRequest(request(),config,async()=>{throw new Error('PRIVATE DATABASE ERROR');});assert.equal(res.status,409);assert.ok(!(await res.text()).includes('PRIVATE'));
+ for (const [error,status] of [[new Error('PRIVATE DATABASE ERROR'),503],[new ProviderEventConflict('PRIVATE CONFLICT'),409]]) {
+  const res=await receiveProviderRequest(request(),config,async()=>{throw error;});assert.equal(res.status,status);assert.ok(!(await res.text()).includes('PRIVATE'));
+ }
 });

@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { parseProviderEnvelope } from "./provider-contract.ts";
 
 export type ReceiverConfig = { enabled?: string; token?: string; databaseUrl?: string; databaseSecret?: string };
+export class ProviderEventConflict extends Error {}
 export function receiverReady(config: ReceiverConfig): boolean {
   return config.enabled === "true" && (config.token?.length ?? 0) >= 32 && !!config.databaseUrl && !!config.databaseSecret;
 }
@@ -32,9 +33,9 @@ export async function receiveProviderRequest(request: Request, config: ReceiverC
     const result = await ingest(event);
     if (!["applied", "stale", "duplicate"].includes(result)) throw new Error("Unexpected receiver result");
     return Response.json({ result });
-  } catch {
+  } catch (error) {
     // No incoming payload or database error details in response/logs.
     // Producer retains the event and alerts staff; never drop an unacknowledged event.
-    return Response.json({ error: "Provider event not accepted" }, { status: 409 });
+    return Response.json({ error: "Provider event not accepted" }, { status: error instanceof ProviderEventConflict ? 409 : 503 });
   }
 }

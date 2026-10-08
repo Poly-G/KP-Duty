@@ -161,7 +161,7 @@ export function ProjectGrid({
         setSelected(confirmed);
       } catch {
         setSaveError("The change couldn’t be saved. Please try again.");
-        setProjects(initialProjects);
+        setProjects((current) => current.map(candidate => candidate.id === project.id ? project : candidate));
         setSelected(project);
       }
     });

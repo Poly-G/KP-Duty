@@ -1,9 +1,10 @@
+import {firstSearchValue,type SearchValue} from '@/lib/ui/search-params';
 import Link from "next/link";
 import {PageHeading} from "@/components/page-heading";
 import {listKnowledge} from "@/modules/knowledge/service";
 import {requireActiveIdentity} from "@/lib/auth/current-user";
-export default async function LibraryPage({searchParams}:{searchParams:Promise<{q?:string;history?:string}>}) {
- const {q="",history}=await searchParams;
+export default async function LibraryPage({searchParams}:{searchParams:Promise<{q?:SearchValue;history?:SearchValue}>}) {
+ const search=await searchParams; const q=firstSearchValue(search.q); const history=firstSearchValue(search.history);
  const [allDocs,{profile}]=await Promise.all([listKnowledge("",history==="1"),requireActiveIdentity()]);
  const docs=allDocs.filter(doc=>doc.title.toLowerCase().includes(q.slice(0,200).trim().toLowerCase()));
  return <><PageHeading eyebrow="Company library" title="What we know and how we work" description="Company truth, business guides and approved processes live here. Notion is our backup."/>

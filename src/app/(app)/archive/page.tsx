@@ -1,11 +1,12 @@
+import {firstSearchValue,type SearchValue} from '@/lib/ui/search-params';
 import {z} from 'zod';
 import {requireAdminIdentity} from '@/lib/auth/current-user';
 import {createClient} from '@/lib/supabase/server';
 import {PageHeading} from '@/components/page-heading';
 import {ArchiveRecord} from '@/components/archive-record';
 const tables={person:'people',organization:'organizations',opportunity:'opportunities',project:'projects',task:'tasks'} as const;
-export default async function ArchivePage({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}){
- await requireAdminIdentity();const search=await searchParams;const type=z.enum(['person','organization','opportunity','project','task']).catch('person').parse(search.type);const archived=search.archived==='yes';const q=(search.q||'').trim().slice(0,200);const db=await createClient();
+export default async function ArchivePage({searchParams}:{searchParams:Promise<Record<string,SearchValue>>}){
+ await requireAdminIdentity();const search=await searchParams;const type=z.enum(['person','organization','opportunity','project','task']).catch('person').parse(firstSearchValue(search.type));const archived=firstSearchValue(search.archived)==='yes';const q=firstSearchValue(search.q).trim();const db=await createClient();
  let query=db.from(tables[type]).select(type==='person'?'id,first_name,last_name,archived_at':type==='task'?'id,title,archived_at':'id,name,archived_at').order('created_at',{ascending:false}).limit(50);
  query=archived?query.not('archived_at','is',null):query.is('archived_at',null);
  if(q)query=query.ilike(type==='person'?'first_name':type==='task'?'title':'name',`%${q.replace(/[\\%_]/g,'\\$&')}%`);

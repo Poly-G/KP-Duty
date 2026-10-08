@@ -329,7 +329,7 @@ export function OpportunityBoard({
         );
       } catch {
         setSaveError("The change couldn’t be saved. Please try again.");
-        setOpportunities(initialOpportunities);
+        setOpportunities((current) => current.map(candidate => candidate.id === opportunity.id ? opportunity : candidate));
       }
     });
   };

@@ -185,7 +185,7 @@ export function DecisionList({
         await setDecisionStatus(decision.id, status);
       } catch {
         setSaveError("The change couldn’t be saved. Please try again.");
-        setDecisions(initialDecisions);
+        setDecisions((current) => current.map(candidate => candidate.id === decision.id ? decision : candidate));
         setSelected(decision);
       }
     });

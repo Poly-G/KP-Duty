@@ -381,7 +381,7 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
         await completeTask(task.id);
       } catch {
         setSaveError("The change couldn’t be saved. Please try again.");
-        setTasks(initialTasks);
+        setTasks((current) => current.map(candidate => candidate.id === task.id ? task : candidate));
       }
     });
   };
@@ -402,7 +402,7 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
         await reopenTask(task.id);
       } catch {
         setSaveError("The change couldn’t be saved. Please try again.");
-        setTasks(initialTasks);
+        setTasks((current) => current.map(candidate => candidate.id === task.id ? task : candidate));
       }
     });
   };
@@ -446,7 +446,7 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
         await setTaskStage(task.id, destinationStage);
       } catch {
         setSaveError("The change couldn’t be saved. Please try again.");
-        setTasks(initialTasks);
+        setTasks((current) => current.map(candidate => candidate.id === task.id ? task : candidate));
       }
     });
   };

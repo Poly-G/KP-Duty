@@ -2,7 +2,18 @@
 
 Prepared October 8, 2026 PT from current Nex Notion decisions, acceptance tasks and KP repository main `3b4a2b3ac99661bcdc758c7b3f069d23688598f9`.
 
-Status: repository handoff prepared. Live KP Work/Library/Decision records have **not** been read or updated in this reconciliation because the browser's admin-policy verification denied access. Do not treat this file as a completed live sync or assume it reflects post-migration KP operational changes. After access is restored, find existing records first and update them; avoid duplicate tasks or overwriting newer KP work.
+Status: live KP operating-record reconciliation completed and read-back verified on October 8, 2026 PT after browser access recovered. Existing records were inspected before writing. This updates Work, project visibility, Library and Decisions; it does not implement or activate the backend connection. The earlier browser-policy block was resolved without bypassing it.
+
+## Live reconciliation evidence
+
+- Existing bridge task `eb04e12d-6f3b-41c3-b73d-d5774580a525`: Working/actionable, next action scoped KP staff/MFA/capability mapping and first protected editorial contract.
+- New high-level customer backend milestone `7c64c7af-ee06-4eb2-b5ad-000410473909`: owned by Poly, Working/actionable, detailed scope linked to Nex TASK-27; no duplicate task existed in the inspected team work.
+- Existing project `e6ff5b5e-f7c9-410d-b15a-6f2fd7907755`: active, phase V1 customer backend and KP admin connection, updated milestone, no invented deadline.
+- Receiving-side task `01291dd1-49dc-4567-83da-426c5bf8cf14`: retained Finished and original completion timestamp; clarified follow-on work without reopening preparation or claiming full integration.
+- Ownership Library guide `82359a2b-de51-4e8f-b673-b624a144e624`: revision 3, Current. Connection handoff `e3df9db0-8e43-4c54-ab62-1a83ca0f2898`: revision 6, Draft. Backend map `6d8b18ad-0bfe-451c-98a1-1553a45e1a92`: revision 2, Draft. Revision-checked edits preserved earlier content as history.
+- Approved ownership/sequencing decision `7d5f441b-d18f-4fc6-bdea-d2f6f2a31867`: Resolved from Poly's existing approval. O1 `3641d519-aedb-4e4e-af3e-a8d730c029d1` and O2 `583f2f7c-d9c6-48a7-9779-7241dbd41ce3`: Open. Older CRM decision retained with an expansion note.
+- Authenticated KP activity notes and read-back checks verified the changes under Poly's session. No teammate messages, grants, credentials, production migration or runtime activation. The first incomplete guide call was rejected before writing; response parsing was corrected and explicit existing IDs/revisions were used for the accepted retry.
+- Nex Notion priorities, TASK-132 and canonical work log `3f48037fac73814b9a9ac332c653a841` record the completed live transfer and remaining backend scope. Earlier blocked records remain history.
 
 ## Authority and source records
 

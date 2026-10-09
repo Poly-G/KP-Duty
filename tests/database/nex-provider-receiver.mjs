@@ -65,4 +65,80 @@ await assert.rejects(receive({...v2,payload:{...v2.payload,operations:{...op,end
 await assert.rejects(receive(envelope({...success,revision:6})),/downgrade/);
 await assert.rejects(receive({...v2,eventId:randomUUID(),payload:{...v2.payload,revision:6,operations:{...op,attemptNumber:2}}}),/facts conflict/);
 await db.exec('reset role;');assert.equal((await stage()).slug,'onboarded');assert.equal(new Date((await stage()).won_at).toISOString(),success.onboardedAt);
-await db.close();console.log('Nex receiver database checks passed: explicit scoped links, admin/live membership, strict allowlist, replay/revision collisions, stale delivery, suppression, terminal retention, sibling attempts and worker-only ingestion.');
+
+await db.exec(`reset role; select set_config('request.jwt.claim.sub','',false);
+create function public.is_active_member() returns boolean language sql stable as $$select private.is_active_member()$$;
+create function public.is_admin() returns boolean language sql stable as $$select private.is_admin()$$;`);
+await db.exec(await readFile(new URL('../../supabase/migrations/202610070002_work.sql',import.meta.url),'utf8'));
+await db.exec("alter table tasks alter column owner_id drop not null;alter table opportunities add column name text default 'Nex synthetic';");
+await db.exec(await readFile(new URL('../../supabase/migrations/202610070004_projects_activity.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../../supabase/migrations/20261008234345_nex_v1_operations.sql',import.meta.url),'utf8'));
+const ntask=randomUUID();
+const taskBase={organizationId:norg,attemptId:attempt2,contactId:contact,taskId:ntask,revision:1,kind:'follow_up',state:'open',dueAt:'2026-10-10T00:00:00.000Z',resolvedAt:null};
+const taskEvent=(p=taskBase)=>({...envelope(),entityType:'provider_follow_up',eventType:'task_snapshot',payload:p});
+async function taskReceive(e){return (await db.query('select kp_receive_nex_task($1) result',[JSON.stringify(e)])).rows[0].result;}
+await db.exec('set role service_role;');
+for(const bad of [taskEvent({...taskBase,notes:'PRIVATE'}),taskEvent({...taskBase,state:'clinical'}),taskEvent({...taskBase,revision:1.5}),taskEvent({...taskBase,dueAt:'2026-02-30T00:00:00.000Z'}),taskEvent({...taskBase,contactId:randomUUID()}),{...taskEvent(),occurredAt:null}])await assert.rejects(taskReceive(bad));
+const te=taskEvent();assert.equal(await taskReceive(te),'applied');assert.equal(await taskReceive(te),'duplicate');await assert.rejects(taskReceive({...te,payload:{...taskBase,dueAt:null}}),/collision/);
+await db.exec('reset role;');
+const ktask=(await db.query('select kp_task_id from nex_provider_tasks where nex_task_id=$1',[ntask])).rows[0].kp_task_id;
+assert.equal((await db.query('select count(*) n from tasks')).rows[0].n,1);
+await user(team);await assert.rejects(db.query("update tasks set stage='finished' where id=$1",[ktask]),/owner/);await assert.rejects(db.query("update tasks set title='arbitrary' where id=$1",[ktask]),/controlled/);
+await user(admin);await db.query("update tasks set stage='finished' where id=$1",[ktask]);
+assert.equal((await db.query('select stage,availability from tasks where id=$1',[ktask])).rows[0].stage,'working');
+let req=(await db.query('select request_id,status from nex_provider_requests where nex_task_id=$1',[ntask])).rows[0];assert.equal(req.status,'pending');
+await db.query("update tasks set stage='finished' where id=$1",[ktask]);assert.equal((await db.query('select count(*) n from nex_provider_requests where nex_task_id=$1',[ntask])).rows[0].n,1);
+await assert.rejects(db.query('delete from tasks where id=$1',[ktask]),/cannot be deleted/);
+const contactReq=(await db.query("select kp_request_nex_contact($1,$2,'dnc') id",[attempt,contact])).rows[0].id;
+assert.equal((await db.query("select kp_request_nex_contact($1,$2,'dnc') id",[attempt,contact])).rows[0].id,contactReq);
+await assert.rejects(db.query("select kp_request_nex_contact($1,$2,'contactable')",[attempt,contact]),/Only contact stop/);
+await assert.rejects(db.query("select kp_request_nex_contact($1,$2,'dnc')",[attempt,randomUUID()]),/Live accepted/);
+assert.equal((await db.query('select snapshot from nex_provider_snapshots where nex_attempt_id=$1',[attempt])).rows[0].snapshot.organizationNoContact,false);
+await assert.rejects(db.query("select kp_ack_nex_request($1,'accepted','applied')",[req.request_id]),/permission denied/);
+await db.exec("reset role;select set_config('request.jwt.claim.sub','',false);set role service_role;");
+const poll=async(after=null)=>(await db.query('select kp_poll_nex_requests($1) page',[after])).rows[0].page;
+assert.deepEqual(await poll(),await poll());assert.equal((await poll()).length,2);assert.equal(JSON.stringify(await poll()).includes('requested_by'),false);
+await db.query("select kp_ack_nex_request($1,'rejected','stale')",[req.request_id]);await db.query("select kp_ack_nex_request($1,'rejected','stale')",[req.request_id]);await assert.rejects(db.query("select kp_ack_nex_request($1,'accepted','applied')",[req.request_id]),/collision/);
+await db.exec('reset role;');assert.equal((await db.query('select availability from tasks where id=$1',[ktask])).rows[0].availability,'yes');
+assert.equal(await taskReceive(taskEvent({...taskBase,revision:2,dueAt:null})),'applied');
+await user(admin);await db.query("update tasks set stage='finished' where id=$1",[ktask]);
+req=(await db.query('select request_id from nex_provider_requests where nex_task_id=$1 and base_revision=2',[ntask])).rows[0];
+await db.exec("reset role;select set_config('request.jwt.claim.sub','',false);set role service_role;");await db.query("select kp_ack_nex_request($1,'accepted','applied')",[req.request_id]);
+await db.exec('reset role;');assert.equal((await db.query('select stage from tasks where id=$1',[ktask])).rows[0].stage,'working');
+const ended={...taskBase,revision:3,state:'completed',dueAt:null,resolvedAt:'2026-10-08T00:00:00.000Z'};assert.equal(await taskReceive(taskEvent(ended)),'applied');assert.equal((await db.query('select stage from tasks where id=$1',[ktask])).rows[0].stage,'finished');
+await assert.rejects(taskReceive(taskEvent({...taskBase,revision:4})),/cannot reopen/);assert.equal(await taskReceive(taskEvent()),'stale');
+await user(admin);await assert.rejects(db.query("update tasks set stage='todo' where id=$1",[ktask]),/cannot reopen/);
+await db.exec("reset role;select set_config('request.jwt.claim.sub','',false);");
+const cancelId=randomUUID();assert.equal(await taskReceive(taskEvent({...taskBase,taskId:cancelId,state:'cancelled',resolvedAt:'2026-10-08T00:00:00.000Z'})),'applied');assert.equal((await db.query('select t.archived_at from tasks t join nex_provider_tasks m on m.kp_task_id=t.id where m.nex_task_id=$1',[cancelId])).rows[0].archived_at!==null,true);
+// Deliberate privileged drift; ordinary writes are already denied by guards.
+await db.exec('alter table opportunities disable trigger zz_nex_provider_opportunity_guard;alter table tasks disable trigger zz_nex_task_guard;');
+await db.query('update opportunities set stage_id=null where id=$1',[opp]);await db.query("update tasks set title='drift' where id=$1",[ktask]);
+await db.exec('alter table opportunities enable trigger zz_nex_provider_opportunity_guard;alter table tasks enable trigger zz_nex_task_guard;');
+await db.query('select private.run_nex_reconciliation()');assert.equal((await stage()).slug,'onboarded');assert.equal((await db.query('select title from tasks where id=$1',[ktask])).rows[0].title,'Nex provider follow-up');
+assert.equal((await db.query('select repaired from nex_provider_reconciliation_runs order by checked_at desc limit 1')).rows[0].repaired,2);
+await db.query('update people set archived_at=now() where id=$1',[person]);await db.query('select private.run_nex_reconciliation()');assert.match(JSON.stringify((await db.query('select issues from nex_provider_reconciliation_runs order by checked_at desc limit 1')).rows),/contact_link_review/);
+await db.query('update people set archived_at=null where id=$1',[person]);
+await user(team);await assert.rejects(db.query('select kp_reconcile_nex()'),/admin/);await assert.rejects(db.query('select kp_export_nex_reconciliation(null)'),/permission denied/);
+await user(disabled);await assert.rejects(db.query("select kp_request_nex_contact($1,$2,'dnc')",[attempt,contact]),/Active member/);assert.equal((await db.query('select * from nex_provider_requests')).rows.length,0);
+await db.exec("reset role;select set_config('request.jwt.claim.sub','',false);set role anon;");await assert.rejects(db.query('select * from nex_provider_tasks'),/permission denied/);await assert.rejects(taskReceive(taskEvent()),/permission denied/);
+await db.exec('reset role;');
+// Ordinary unlinked work retains its normal deletion behavior.
+const ordinary=randomUUID();await db.query('insert into tasks(id,title,owner_id,created_by,updated_by) values($1,$2,$3,$3,$3)',[ordinary,'Ordinary task',admin]);await user(admin);await db.query('delete from tasks where id=$1',[ordinary]);assert.equal((await db.query('select id from tasks where id=$1',[ordinary])).rows.length,0);await db.exec("reset role;select set_config('request.jwt.claim.sub','',false);");
+// Ten synthetic organizations, each with two independently linked contacts.
+for(let i=0;i<10;i++){
+ const ko=randomUUID(),no=randomUUID(),a=randomUUID(),o=randomUUID(),c1=randomUUID(),c2=randomUUID(),p1=randomUUID(),p2=randomUUID();
+ await db.query('insert into organizations values($1,null)',[ko]);await db.query('insert into people values($1,$3,null),($2,$3,null)',[p1,p2,ko]);await db.query('insert into opportunities(id,business_id,organization_id) values($1,$2,$3)',[o,biz,ko]);
+ await user(admin);await db.query('select kp_link_nex_provider($1,$2,$3,$4,$5,$6)',[no,c1,a,ko,p1,o]);await db.query('select kp_link_nex_provider($1,$2,$3,$4,$5,$6)',[no,c2,a,ko,p2,o]);
+ await db.exec("reset role;select set_config('request.jwt.claim.sub','',false);set role service_role;");await receive(envelope({...base,organizationId:no,attemptId:a,contactId:c1}));
+ const event=taskEvent({...taskBase,organizationId:no,attemptId:a,contactId:c2,taskId:randomUUID()});assert.equal(await taskReceive(event),'applied');assert.equal(await taskReceive(event),'duplicate');
+ await user(admin);await db.query("select kp_request_nex_contact($1,$2,'wrong_person')",[a,c2]);assert.equal((await db.query('select snapshot from nex_provider_snapshots where nex_attempt_id=$1',[a])).rows[0].snapshot.contactStatus,'contactable');
+ await db.exec('reset role;');
+}
+await db.query('select private.run_nex_reconciliation()');
+await db.exec('set role service_role;');const exported=(await db.query('select kp_export_nex_reconciliation(null) page')).rows[0].page;assert.equal(exported.length,12);assert.equal(exported.filter(e=>e.contacts.length===2).length,10);
+assert.equal((await db.query('select kp_export_nex_reconciliation($1) page',[exported.at(-1).attemptId])).rows[0].page.length,0);
+await db.exec('reset role;');
+await db.query("insert into nex_provider_requests(nex_attempt_id,nex_contact_id,kind,base_revision,requested_by) select $1,$2,'contact_dnc',100+n,$3 from generate_series(1,110) n",[attempt,contact,admin]);
+await db.exec('set role service_role;');const firstPage=await poll();assert.equal(firstPage.length,100);const secondPage=await poll(firstPage.at(-1).requestId);assert.equal(secondPage.length,21);assert.equal(new Set([...firstPage,...secondPage].map(r=>r.requestId)).size,121);
+await db.exec('reset role;');
+await db.close();console.log('Nex V1 database checks passed: explicit links, seven stages, operating facts, replay safety, task creation/cancellation, completion review, contact-scoped return requests, source export, pagination, privileged drift repair, ordinary Work preservation, ten multi-contact organizations and live role isolation.');

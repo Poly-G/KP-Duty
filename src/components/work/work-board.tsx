@@ -378,7 +378,8 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
 
     startTransition(async () => {
       try {
-        await completeTask(task.id);
+        const saved = await completeTask(task.id);
+        setTasks(current => current.map(candidate => candidate.id === task.id ? { ...candidate, stage: saved.stage, finished_at: saved.finished_at, availability: saved.availability, waiting_on: saved.stage !== "finished" ? "Nex completion review" : candidate.waiting_on } : candidate));
       } catch {
         setSaveError("The change couldn’t be saved. Please try again.");
         setTasks((current) => current.map(candidate => candidate.id === task.id ? task : candidate));

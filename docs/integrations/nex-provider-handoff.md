@@ -1,44 +1,90 @@
-# Nex provider integration — KP preparation, October 8, 2026
+# Nex provider integration — KP V1 handoff
 
-## Ownership and current state
+## Ownership and release boundary
 
-KP owns provider CRM relationships, human follow-up and shared work. Nex owns research evidence, listing readiness/publication, representation authority, provider/Veteran accounts, and customer support/reviews. Notion remains Nex's canonical requirements and acceptance record. This implementation is receiving-side preparation; it does not accept the pending Nex lifecycle or privacy release gates.
+KP owns shared provider CRM identity, recruitment activity, human follow-up and work assignment. Nex owns research, evidence, listing/publication, representation authority, provider/Veteran accounts and lifecycle truth. Notion TASK-132 remains the requirements and acceptance record. KP preparation does not accept Nex's pending lifecycle/privacy gates. V2 marketplace is excluded.
 
-The provider-only endpoint is `POST /api/integrations/nex/providers`. It returns 503 until explicitly configured. No real source identities or credentials have been created by this change. The admin screen is `/businesses/nex/integration` and shows configuration status separately from accepted snapshots.
+The KP receiver, explicit admin links, seven-stage pipeline, operating fields, task mirror, durable return requests and daily local reconciliation are implemented. No live connection, source identities, integration tokens, outreach, account authority or production fixtures are created. All external endpoints default to HTTP503 until explicitly configured. Schema version 2, task kinds and outcome codes are prepared transport choices that must be reconciled with the actual accepted Nex producer.
 
-## Admin links
+## Explicit identity links and navigation
 
-An active KP admin explicitly links Nex organization, contact (optional), and onboarding attempt IDs to existing KP company, contact and Nex opportunity IDs. There is no matching by name/email and no import of contact details from Nex. KP contact must belong to the linked company; opportunity must belong to the active Nex business. IDs map domain records, never authentication identities.
+Active KP admins link reviewed Nex organization/contact/attempt IDs to existing company/person/opportunity records at `/businesses/nex/integration`. Contact is optional, but both source/CRM contact IDs must be supplied together. A contact must belong to the linked company and the opportunity to the active Nex business. No name/email matching or contact-detail import occurs. A company can have multiple contacts and bounded attempts. Mapping is immutable; a retry can add a new reviewed contact.
 
-Mappings are immutable and retries are safe. A new contact may be added using the same organization/attempt mapping. Corrections to an erroneous source identity mapping require a reviewed administrative migration; this screen cannot silently relink it. Archiving or moving a CRM record makes new delivery fail until staff resolve it.
+IDs map domain records, never authentication identities. KP login/linking grants no Nex staff, provider membership, representation, publication or send authority. The screen links to Work and the CRM. An optional reviewed `NEX_ADMIN_ORIGIN` produces only an HTTPS `/admin` link; credentials, query strings and arbitrary paths are rejected. Do not configure this until the actual source host is verified.
 
-## Restricted feed
+Erroneous mappings require an audited administrative repair reviewed against both systems. Never relink by editing identity fields, mint a replacement event to hide a collision, or silently unarchive moved/deleted records. Archive/merge/moved-contact conditions appear in reconciliation and stop new live ingestion until reviewed.
 
-The contract is strict schemaVersion 1, source nexproviders, target kp, entityType provider_onboarding_attempt, eventType provider_snapshot. See `src/modules/integrations/nex/provider-contract.ts` for exact allowlisted fields. No Veteran records, claim/clinical data, private research/evidence, review text, free text, contact details or arbitrary metadata are permitted. Rejected payloads/database errors are not returned or logged. The 8 KiB body limit is enforced on streaming reads after authentication.
+## Provider snapshots
 
-The database repeats validation and exposes ingestion only to service_role; ordinary team/admin/anonymous sessions cannot ingest or write the mirror. Active KP members can read provider-only mirror state. Linking uses current active-admin membership, not a role embedded in an old token.
+`POST /api/integrations/nex/providers` accepts strict provider snapshot schema versions 1 and 2; see `src/modules/integrations/nex/provider-contract.ts`. Version 1 remains unchanged. Version 2 adds the exact operations object: outreachStatus, endReason, stalled, stallPhase, stalledSince, lastTouchAt, nextActionDueAt, openedAt, closedAt, attemptNumber, rulesVersion, asOfAt. Reason-code and numeric rules-version choices require accepted Nex derivation alignment. Unknown fields, free text, Veteran/customer/clinical records, contact details, documents, auth IDs and arbitrary metadata are rejected.
 
-Event IDs are idempotent. Reused event IDs with different content and reused revisions with different snapshots fail. Revisions order per onboarding attempt; older snapshots are acknowledged as stale without overwriting the mirror. Transaction locks serialize receipts and attempts. Success timestamp and terminal phase cannot be changed/reopened; new attempts use new IDs and opportunities. Multiple known active attempts for an organization fail. Nex must supply a consistent initial baseline and end the old attempt before opening the next; KP cannot infer missing source events.
+Event IDs and revisions are retry-safe and collision-checked inside one transaction. Stale delivery is acknowledged without replacing current state. A newer version-1 snapshot cannot erase accepted version-2 facts. Terminal attempts cannot reopen; genuinely new attempts use new IDs and opportunities. Source first success time is retained after listing-readiness regression. Admission is historical approved-preview or inbound-claim evidence; Nex must prove admission before sending.
 
-Contact DNC/wrong-person remains scoped to that contact. Organization no-contact, closed/merged status, listing readiness and representation are separate dimensions. KP does not send outreach, publish listings, grant representation or auto-complete work from these updates. This preparation leaves the existing empty CRM scaffold untouched and shows the read-only Nex phase separately. Before accepting TASK-132, implement the approved Nex-derived opportunity rollup, stalled/end/action fields, Nex-created task mapping and drift reconciliation. Human activities must not become authoritative stage overrides. This preparation does not supersede those canonical requirements. No generic CRM stage migration or writeback is included.
+Accepted snapshots atomically project the seven-stage `provider-onboarding` pipeline. Linked business/company and phase are database-protected; linked cards cannot be dragged. Before first accepted state, the linked stage is locked. Pauses/stalls are operating conditions, not stages. KP does not derive source truth from human CRM activity.
 
-## Enablement handoff when Nex account is available
+## Nex-created follow-up tasks
 
-1. Accept Nex lifecycle C1/TASK128, TASK132 contract and privacy review gates against actual release code. Pending Nex PR93 is preparation, not an authenticated producer.
-2. Verify the KP migration and hosted receiver revision, then use the admin screen to link reviewed real domain records. Do not insert synthetic fixtures in production.
-3. Configure server-only KP environment variables through the deployment's secret manager: NEX_PROVIDER_RECEIVER_ENABLED=true, NEX_PROVIDER_RECEIVER_TOKEN (random at least 32 characters), KP_INTEGRATION_SUPABASE_SECRET (KP server service-role secret). The existing NEXT_PUBLIC_SUPABASE_URL must identify the KP project. The integration secret never goes to Nex/browser/source control. Keep ENABLED unset until readiness review.
-4. Nex receives only the scoped receiver bearer token and endpoint URL. Its server creates the allowlisted envelope from accepted lifecycle state and queues delivery with the same event ID/revision on retries. Use canonical millisecond UTC timestamps and normalized UUIDs.
-5. Test approved-preview and inbound-claim admission, regressions after success, missing/moved/archive links, wrong-person vs organization DNC, terminal reentry, stale/duplicate/collision delivery, access revocation and forbidden data. Verify no customer auth/profile mutation and no outreach send.
-6. Producer retains every unacknowledged event. Retry transient 503/network failures with bounded backoff; stop and alert staff on 400/401/409/413/415. Review identity/revision collisions rather than minting new event IDs to hide them. KP receipts are append-only operational replay evidence; define retention with the eventual producer's replay horizon before any pruning.
+`POST /api/integrations/nex/tasks` accepts an independent strict version-1 envelope:
 
-Disabling ENABLED is the receiving-side kill switch. It does not acknowledge or consume events. No live feed, automatic outreach, provider authority linking, bidirectional suppression writeback, or follow-up completion writeback is enabled by this preparation. Those capabilities need separately accepted Nex-side command contracts and cannot be fabricated solely from KP access.
+- schemaVersion=1, source=nexproviders, target=kp;
+- entityType=provider_follow_up, eventType=task_snapshot;
+- eventId, canonical UTC occurredAt;
+- exact payload: organizationId, attemptId, contactId|null, taskId, positive revision, kind, state, dueAt|null, resolvedAt|null.
 
-## Pipeline and operating-field slice
+Prepared kind codes are follow_up, verify_representation, complete_profile, review_stall. State is open/completed/cancelled. Terminal states require a resolvedAt no later than occurredAt; open requires null. Nex must accept this contract before activation. No title, task narrative, evidence or arbitrary URL comes from Nex.
 
-The `provider-onboarding` pipeline has seven Nex-derived stages. The legacy pipeline and its records remain; migration refuses to hide live unmapped opportunities. Accepted snapshots atomically project linked opportunities into the new pipeline. Database guards reject changing a linked organization/business or setting a stage inconsistent with the accepted snapshot. Before the first snapshot, linked stages are locked. The board disables dragging linked cards and opens their operating status. First successful `onboardedAt` is the CRM success date even after listing readiness regresses.
+A task requires an already accepted provider attempt and reviewed contact link if contact-scoped. Initial delivery atomically creates one KP Work item with a fixed descriptive title, source deadline and internal reference, then immutable source mapping. Retries never duplicate work. The initial owner is the active admin who linked the attempt, or unassigned if that person is inactive; KP admin assignment remains local. Task ID/attempt/contact/kind cannot move. Ended tasks cannot reopen. Cancellation archives the Work item without presenting it as successful completion.
 
-Schema version 1 remains strict and unchanged. Prepared schema version 2 adds one exact `operations` object: outreachStatus, endReason, stalled, stallPhase, stalledSince, lastTouchAt, nextActionDueAt, openedAt, closedAt, attemptNumber, rulesVersion and asOfAt. This is **KP-side contract preparation**, not accepted Nex C2 semantics. Nex must reconcile reason codes and rules-version representation with its actual derivation before activation. No arbitrary free text or new customer fields are accepted. Dates are canonical UTC; end/stall values and chronology must be consistent. Existing version-1 snapshots display “Awaiting operating update,” never invented defaults.
+KP owners can work on the task and record local notes. Source title/deadline/identity/reference and terminal outcome are protected. Finishing an open source task creates a durable completion request; the Work item remains Working/Waiting with “Nex completion review.” Nex acknowledgement alone does not mark it finished. Only an accepted completed source snapshot closes it. A rejection releases the review wait. Generic Work UI and WebMCP updates use the same database guard; ordinary unlinked task behavior is preserved.
 
-Version 2 requires the independent server-only `NEX_PROVIDER_OPERATIONS_ENABLED=true` switch as well as the existing receiver configuration. Both switches remain off. Direct database ingestion remains worker-only. Version-2 receipts use the full original envelope for replay/collision detection. A newer version-1 update cannot erase accepted operating facts; older version-1 delivery remains acknowledged as stale. Attempt opened date/number are immutable and derivation as-of cannot move backwards. Onboarded and Not onboarded remain terminal.
+## Contact and completion return requests
 
-This slice does not create follow-up tasks, return-request dispatch, daily drift reconciliation or marketplace records. Those are subsequent slices. The SQL migration and synthetic database tests cover linked-stage enforcement and retained success time; integrated Nex producer acceptance is still required.
+Staff select the affected linked contact at the integration screen and request dnc or wrong_person. No organization-stop or un-suppression request is accepted here. These requests do not mutate contact, organization, representation, listing, stage or source task truth. A completion request is scoped to one Nex-created task.
+
+`GET /api/integrations/nex/requests?after=<request UUID>` exports at most 100 pending requests, ordered by request ID. Each includes requestId, organizationId, attemptId, contactId|null, taskId|null, kind, baseRevision, requestedAt. No staff identity, notes, email or customer data is exported. Response is `{items,next}`; null next ends the pass. Start the next pass from the beginning. Polling never consumes requests; unacknowledged items are redelivered until resolved. IDs and source revision deduplicate repeated clicks/completion attempts. A stale rejection requires fresh source state before a new request at a new revision.
+
+Nex validates the exact contact/task, current authority, lifecycle and revision. It durably records the request ID/outcome and corresponding domain change before acknowledging. Retry the same decision after connection failure.
+
+`POST /api/integrations/nex/requests` accepts only `{requestId,status,code}`. Accepted codes: applied/already_applied. Rejected codes: stale/not_allowed/inactive_record. Status is accepted/rejected and must match its code. Conflicting acknowledgements fail; identical acknowledgements are safe. There is no direct Nex state mutation through this endpoint. Nex emits resulting provider/task snapshots separately.
+
+## Reconciliation and operating visibility
+
+Hosted Supabase schedules `private.run_nex_reconciliation()` daily at 03:30 UTC. No external network request or secret is stored in the scheduler. An active KP admin can run the same check from the integration screen. Database/function permissions keep ordinary workers/team members from invoking maintenance or writing its report.
+
+The check compares accepted snapshots with current opportunity stage/success time and source-owned task fields/outcomes. Safe stage/task drift is repaired. Archived/moved company/opportunity/contact/task associations and missing source baselines are flagged for reviewed repair; source authority is never inferred or recreated. Reports contain IDs, issue codes and counts only. The screen shows last check, repairs, pending requests, requests older than one day and an overdue-check notice after 26 hours. A failing scheduler is visible through its missing heartbeat and hosted Cron run history. Receiver failures remain generic and do not log rejected payloads.
+
+`GET /api/integrations/nex/reconciliation?after=<attempt UUID>` provides bounded source-comparison pages, protected by the return-connection token. It exports accepted provider/task snapshots, link health/current stage, contact association health and request outcomes, without contact details or local notes. Nex must compare against its complete source inventory nightly, detect missing source/KP records and all revision/field/contact/task differences, then re-push newer source snapshots. This local check/export does not substitute for that Nex worker. Nex must continue operating when KP is unavailable.
+
+## Connection controls
+
+Server-only environment configuration, through secret managers:
+
+| Setting | Purpose |
+| --- | --- |
+| NEX_PROVIDER_RECEIVER_ENABLED | Global integration kill switch; unset/false stops every external endpoint |
+| NEX_PROVIDER_RECEIVER_TOKEN | Scoped inbound snapshot/task bearer token, at least 32 characters |
+| KP_INTEGRATION_SUPABASE_SECRET | KP server worker key; never sent to Nex/browser/source control |
+| NEXT_PUBLIC_SUPABASE_URL | Existing KP project URL |
+| NEX_PROVIDER_OPERATIONS_ENABLED | Independent schema-2 snapshot gate |
+| NEX_PROVIDER_TASKS_ENABLED | Independent task feed gate |
+| NEX_PROVIDER_REQUESTS_ENABLED | Independent return-request and reconciliation export gate |
+| NEX_PROVIDER_REQUESTS_TOKEN | Separate scoped return-connection bearer token, at least 32 characters |
+| NEX_ADMIN_ORIGIN | Optional verified source-admin HTTPS origin |
+
+No gate or token was enabled/created by this implementation. Authentication precedes parsing/body reads; POST streaming body size is capped at 8 KiB. Worker RPCs alone ingest/read exports/acknowledge; ordinary anonymous/staff sessions cannot. Active membership is checked live for linking, contact requests and maintenance. Source tables/receipts/requests cannot be directly written by staff or worker sessions.
+
+Disable the global switch before rotation/revocation or repair. Rotate each scoped token in both secret managers during a coordinated paused window; retain queued source events/pending requests and retry them unchanged after verification. Nex receives only the scoped HTTP tokens and endpoint URLs, never KP's database worker key. Existing requests survive receiver outages and revoked staff access. A token/account leak follows the accepted incident process; no credential material belongs in CRM notes or logs.
+
+## Replay retention and rights handling
+
+Receipts are append-only replay/collision evidence and are not automatically pruned. Source snapshots, immutable mappings and request outcomes are retained for operational correctness. This is a deliberate hold pending the accepted replay horizon and privacy contract, not an indefinite-retention policy decision. No scheduled deletion or contact-data copying is introduced.
+
+Before live activation, Nex and KP must agree the producer replay horizon, minimum event-ID tombstone retention, contact rights/deletion propagation, approved administrative anonymization/repair and legal/privacy retention. Complete source task cancellation/stop handling before archiving a linked contact. Review affected associations, outstanding requests and replay tombstones; do not hard-delete source links or reintroduce deleted contact details through retries. KP's native CRM data remains independently subject to its rights process. Those source-dependent decisions cannot be accepted solely with KP access.
+
+## Nex account handoff and acceptance
+
+1. Accept lifecycle C1/TASK-128, derivation C2/TASK-132 and security/privacy gates against actual Nex code. Reconcile the prepared schema-2 fields, task kinds and request outcome codes with canonical source rules.
+2. Implement the authenticated source producer, transactional retry queue, request validator and nightly full-source comparison. Keep every unacknowledged event/request. Transient 429/503/network failures back off without changing source truth; 400/401/409/413/415 require staff review, not replacement IDs.
+3. Verify actual source domain IDs and the reviewed admin host. Link reviewed records; no synthetic fixtures in production. Configure scoped tokens only through secret managers and verify disabled/unauthorized paths before staged activation.
+4. Run the integrated ten-organization/multiple-contact matrix: approved-preview/inbound admission, contact versus organization stops, terminal re-entry, regression after success, tasks/cancellation/completion review, stale/duplicate/collision delivery, moved/archived links, access revocation, forced API/network failures and deliberate drift repair. Local KP tests are receiving-side evidence, not this cross-account release acceptance.
+5. Agree retention/rights and verify rotation, kill-switch recovery and scheduler heartbeat. Activate only the accepted V1 provider feed. Finish remaining Nex Veteran/provider/admin V1 release checks before starting V2 marketplace.

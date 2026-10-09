@@ -281,7 +281,7 @@ export function KPSiteTools() {
           name: "complete_task",
           title: "Complete my KP task",
           description:
-            "Mark one task owned by the signed-in KP Duty user as finished. It cannot complete another person's task.",
+            "Finish one owned ordinary KP task. For a Nex-linked follow-up, record a durable completion request and leave it waiting for Nex review; only accepted Nex state confirms completion. It cannot complete another person's task.",
           inputSchema: {
             type: "object",
             properties: {

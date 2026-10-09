@@ -1,5 +1,5 @@
 "use server";
-import { requireAdminIdentity } from "@/lib/auth/current-user";
+import { requireAdminIdentity, requireActiveIdentity } from "@/lib/auth/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -16,4 +16,18 @@ export async function linkProvider(form: FormData) {
   const { error } = await client.rpc("kp_link_nex_provider", payload);
   revalidatePath("/businesses/nex/integration");
   redirect(`/businesses/nex/integration?result=${error ? "conflict" : "linked"}`);
+}
+export async function requestContactStatus(form: FormData) {
+  await requireActiveIdentity();
+  const client = await createClient();
+  const { error } = await client.rpc("kp_request_nex_contact", { p_attempt: String(form.get("attempt") ?? ""), p_contact: String(form.get("contact") ?? ""), p_status: String(form.get("status") ?? "") });
+  revalidatePath("/businesses/nex/integration");
+  redirect(`/businesses/nex/integration?result=${error ? "request_failed" : "requested"}`);
+}
+export async function reconcileProviderRecords() {
+  await requireAdminIdentity();
+  const client = await createClient();
+  const { error } = await client.rpc("kp_reconcile_nex");
+  revalidatePath("/businesses/nex/integration");
+  redirect(`/businesses/nex/integration?result=${error ? "check_failed" : "checked"}`);
 }

@@ -2,7 +2,9 @@
 
 ## Ownership and release boundary
 
-KP owns shared provider CRM identity, recruitment activity, human follow-up and work assignment. Nex owns research, evidence, listing/publication, representation authority, provider/Veteran accounts and lifecycle truth. Notion TASK-132 remains the requirements and acceptance record. KP preparation does not accept Nex's pending lifecycle/privacy gates. V2 marketplace is excluded.
+Owner correction, October 8, 2026 PT: KP is the source of truth and sole workspace for Nex admin operations, including staff administration and admin-facing work queues. Nex retains protected domain services for research/evidence, publication, representation, provider/Veteran accounts and lifecycle integrity. Customer workspaces remain in Nex. Do not build a separate Nex admin frontend. Notion TASK-132 and the [admin reconciliation handoff](nex-admin-reconciliation.md) preserve the requirements and remaining acceptance. V2 marketplace is excluded from this implementation.
+
+The approved Nex security/lifecycle stack and first transactional activity backend merged through [Nex PR #100](https://github.com/Poly-G/NexProviders/pull/100), main commit `6de63a566127f9275618e49397b142333881c821`, after all six CircleCI checks passed on `fa492a670b4a18df649c6c0ea4f77d7657d5a4f9`. This is code integration, not hosted acceptance or permission/connection activation. Veteran/Provider workspace backend and the scoped KP admin connection take priority; further lifecycle expansion comes last.
 
 The KP receiver, explicit admin links, seven-stage pipeline, operating fields, task mirror, durable return requests and daily local reconciliation are implemented. No live connection, source identities, integration tokens, outreach, account authority or production fixtures are created. All external endpoints default to HTTP503 until explicitly configured. Schema version 2, task kinds and outcome codes are prepared transport choices that must be reconciled with the actual accepted Nex producer.
 
@@ -10,7 +12,7 @@ The KP receiver, explicit admin links, seven-stage pipeline, operating fields, t
 
 Active KP admins link reviewed Nex organization/contact/attempt IDs to existing company/person/opportunity records at `/businesses/nex/integration`. Contact is optional, but both source/CRM contact IDs must be supplied together. A contact must belong to the linked company and the opportunity to the active Nex business. No name/email matching or contact-detail import occurs. A company can have multiple contacts and bounded attempts. Mapping is immutable; a retry can add a new reviewed contact.
 
-IDs map domain records, never authentication identities. KP login/linking grants no Nex staff, provider membership, representation, publication or send authority. The screen links to Work and the CRM. An optional reviewed `NEX_ADMIN_ORIGIN` produces only an HTTPS `/admin` link; credentials, query strings and arbitrary paths are rejected. Do not configure this until the actual source host is verified.
+IDs map domain records, never authentication identities. KP login/linking grants no Nex staff, provider membership, representation, publication or send authority. The screen links to Work and the CRM. The existing optional `NEX_ADMIN_ORIGIN` HTTPS `/admin` link is legacy compatibility, not the new admin delivery destination; do not configure it as the KP admin connection. Credentials, query strings and arbitrary paths remain rejected. Existing Nex editor infrastructure may remain until a reviewed bridge replaces it.
 
 Erroneous mappings require an audited administrative repair reviewed against both systems. Never relink by editing identity fields, mint a replacement event to hide a collision, or silently unarchive moved/deleted records. Archive/merge/moved-contact conditions appear in reconciliation and stop new live ingestion until reviewed.
 
@@ -69,7 +71,7 @@ Server-only environment configuration, through secret managers:
 | NEX_PROVIDER_TASKS_ENABLED | Independent task feed gate |
 | NEX_PROVIDER_REQUESTS_ENABLED | Independent return-request and reconciliation export gate |
 | NEX_PROVIDER_REQUESTS_TOKEN | Separate scoped return-connection bearer token, at least 32 characters |
-| NEX_ADMIN_ORIGIN | Optional verified source-admin HTTPS origin |
+| NEX_ADMIN_ORIGIN | Legacy compatibility only; not the KP admin connection |
 
 No gate or token was enabled/created by this implementation. Authentication precedes parsing/body reads; POST streaming body size is capped at 8 KiB. Worker RPCs alone ingest/read exports/acknowledge; ordinary anonymous/staff sessions cannot. Active membership is checked live for linking, contact requests and maintenance. Source tables/receipts/requests cannot be directly written by staff or worker sessions.
 
@@ -83,8 +85,8 @@ Before live activation, Nex and KP must agree the producer replay horizon, minim
 
 ## Nex account handoff and acceptance
 
-1. Accept lifecycle C1/TASK-128, derivation C2/TASK-132 and security/privacy gates against actual Nex code. Reconcile the prepared schema-2 fields, task kinds and request outcome codes with canonical source rules.
+1. Reuse the approved merged Nex foundation; finish its separate hosted security/privacy acceptance and reconcile prepared schema-2 fields, task kinds and request outcome codes with canonical source rules. Prioritize the protected admin connection and Veteran/Provider backend before further lifecycle expansion.
 2. Implement the authenticated source producer, transactional retry queue, request validator and nightly full-source comparison. Keep every unacknowledged event/request. Transient 429/503/network failures back off without changing source truth; 400/401/409/413/415 require staff review, not replacement IDs.
-3. Verify actual source domain IDs and the reviewed admin host. Link reviewed records; no synthetic fixtures in production. Configure scoped tokens only through secret managers and verify disabled/unauthorized paths before staged activation.
+3. Verify actual source domain IDs and the protected backend host. Define named KP staff/capability mapping with fresh MFA, live revocation and object scope before any new admin connection. Link reviewed records; no synthetic fixtures in production. Configure scoped tokens only through secret managers and verify disabled/unauthorized paths before staged activation. A provider-feed token never authorizes editorial, support, moderation or staff actions.
 4. Run the integrated ten-organization/multiple-contact matrix: approved-preview/inbound admission, contact versus organization stops, terminal re-entry, regression after success, tasks/cancellation/completion review, stale/duplicate/collision delivery, moved/archived links, access revocation, forced API/network failures and deliberate drift repair. Local KP tests are receiving-side evidence, not this cross-account release acceptance.
 5. Agree retention/rights and verify rotation, kill-switch recovery and scheduler heartbeat. Activate only the accepted V1 provider feed. Finish remaining Nex Veteran/provider/admin V1 release checks before starting V2 marketplace.

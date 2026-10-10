@@ -14,16 +14,19 @@ export async function getDeliverables(projectId: string): Promise<Deliverable[]>
   if (versionError) throw new Error(versionError.message);
   const versionIds = (versions || []).map(v => v.id);
   if (!versionIds.length) return (data as unknown as Omit<Deliverable,'versions'>[]).map(d=>({...d,versions:[]}));
-  const [files,reviews,publications] = await Promise.all([
+  const [files,reviews,publications,portalDecisions,previews] = await Promise.all([
     db.from('deliverable_version_files').select('version_id,file_id').in('version_id',versionIds),
     db.from('deliverable_reviews').select('*,actor:profiles!recorded_by(display_name)').in('version_id',versionIds).order('recorded_at'),
     db.from('deliverable_publications').select('id,published_at').in('id',versionIds),
+    db.from('solta_portal_decisions').select('*').in('version_id',versionIds),
+    db.from('solta_portal_previews').select('version_id,preview_url').in('version_id',versionIds),
   ]);
-  for (const result of [files,reviews,publications]) if(result.error) throw new Error(result.error.message);
+  for (const result of [files,reviews,publications,portalDecisions,previews]) if(result.error) throw new Error(result.error.message);
   return (data as unknown as Omit<Deliverable,'versions'>[]).map(d=>({...d,versions:(versions || []).filter(v=>v.deliverable_id===d.id).map(v=>({
     ...v,file_ids:(files.data || []).filter(f=>f.version_id===v.id).map(f=>f.file_id),
     published_at:publications.data?.find(p=>p.id===v.id)?.published_at || null,
-    reviews:(reviews.data || []).filter(r=>r.version_id===v.id) as unknown as Review[],
+    preview_url:previews.data?.find(p=>p.version_id===v.id)?.preview_url||null,
+    reviews:[...(reviews.data || []),...(portalDecisions.data||[]).map(r=>({...r,lane:'client_record',recorded_at:r.created_at,recorded_by:r.actor_id,client_name:r.actor_name,evidence:'Verified client portal decision',actor:null}))].filter(r=>r.version_id===v.id) as unknown as Review[],
   })) as DeliverableVersion[]}));
 }
 export async function getDeliverableReviewers() {

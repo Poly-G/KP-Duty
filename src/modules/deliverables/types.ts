@@ -11,7 +11,7 @@ export type Review = {
 };
 export type DeliverableVersion = {
   id: string; deliverable_id: string; version: number; description: string; created_at: string;
-  created_by: string; file_ids: string[]; published_at: string | null; reviews: Review[];
+  preview_url?:string|null; created_by: string; file_ids: string[]; published_at: string | null; reviews: Review[];
 };
 export type Deliverable = {
   id: string; project_id: string; title: string; kind: DeliverableKind; reviewer_id: string;

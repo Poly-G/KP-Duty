@@ -77,3 +77,10 @@ export async function publishDeliverable(form:FormData) {
   if(error) throw new Error(error.message);
   refresh(projectId,business);
 }
+
+export async function publishWorkingPreview(form:FormData){
+ const {projectId,business,db}=await context(form);if(business!=='solta')throw new Error('Solta project required.');
+ const version=uuid.parse(form.get('version_id'));await verifyVersion(db,version,projectId);
+ const url=new URL(z.string().max(2000).parse(form.get('preview_url')));if(url.protocol!=='https:'||url.username||url.password)throw new Error('HTTPS preview required.');
+ const {error}=await db.rpc('kp_publish_solta_preview',{p_version:version,p_url:url.href});if(error)throw new Error(error.message);refresh(projectId,business);
+}

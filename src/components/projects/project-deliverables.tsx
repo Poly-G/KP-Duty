@@ -3,7 +3,7 @@ import {ActionForm} from '@/components/action-form';
 import {requireActiveIdentity} from '@/lib/auth/current-user';
 import {getDeliverables,getDeliverableReviewers} from '@/modules/deliverables/queries';
 import {deliverableKinds} from '@/modules/deliverables/types';
-import {createDeliverable,addDeliverableVersion,reviewDeliverable,publishDeliverable} from '@/modules/deliverables/actions';
+import {createDeliverable,addDeliverableVersion,reviewDeliverable,publishDeliverable,publishWorkingPreview} from '@/modules/deliverables/actions';
 import {getProjectCollaboration} from '@/modules/project-collaboration/queries';
 const field='rounded-lg border border-[var(--border)] p-3';
 const button='rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-40';
@@ -11,7 +11,7 @@ export async function ProjectDeliverables({id,business,ownerId,requirements}:{id
   const [deliverables,reviewers,collaboration,{profile}]=await Promise.all([
     getDeliverables(id),getDeliverableReviewers(),getProjectCollaboration(id),requireActiveIdentity(),
   ]);
-  const availableFiles=collaboration.files.filter(f=>f.state==='ready'&&!f.drive_url);
+  const availableFiles=collaboration.files.filter(f=>f.state==='ready'&&!f.drive_url&&!f.portal_upload);
   function context(){return <><input type="hidden" name="project_id" value={id}/><input type="hidden" name="business" value={business}/></>;}
   return <section className="mb-7 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
     <h2 className="text-xl font-medium">Deliverables & approvals</h2>
@@ -57,6 +57,7 @@ export async function ProjectDeliverables({id,business,ownerId,requirements}:{id
           <label className="grid gap-2 text-sm">Evidence · internal only<textarea required name="evidence" maxLength={5000} rows={2} placeholder="Email reference, meeting date and response, or evidence link" className={field}/></label>
           <button type="submit" className={button}>Record client response to version {current.version}</button>
         </ActionForm>:null}
+        {business==='solta'&&current?.published_at?<div className="mt-5">{current.preview_url?<a className="underline text-sm" href={current.preview_url} target="_blank" rel="noopener noreferrer">Published working preview · Version {current.version}</a>:<ActionForm action={publishWorkingPreview} className="grid gap-3" errorMessage="Couldn’t publish this preview. Link the project to Solta and use a published current version.">{context()}<input type="hidden" name="version_id" value={current.id}/><label className="grid gap-2 text-sm">Working preview URL · Version {current.version}<input name="preview_url" type="url" required maxLength={2000} placeholder="https://" className={field}/></label><p className="text-xs text-[var(--muted)]">Use the deployment URL for this exact version. Publish a new version for later changes.</p><button className={button}>Publish preview to client portal</button></ActionForm>}</div>:null}
         <details className="mt-5"><summary className="cursor-pointer text-sm">Versions & review history</summary><div className="mt-3 space-y-4">{d.versions.map(v=><section key={v.id} className="rounded-lg bg-[var(--surface-subtle)] p-3">
           <h4 className="text-sm font-medium">Version {v.version} · {v.published_at?'Published':'Internal only'}</h4><p className="mt-2 whitespace-pre-wrap text-sm">{v.description}</p>
           <ul className="mt-2 space-y-1 text-sm">{v.file_ids.map(fileId=>{const file=collaboration.files.find(f=>f.id===fileId);return <li key={fileId}>{file?<a href={`/api/v1/project-files/${file.id}`} className="underline">{file.name} · File version {file.version}</a>:<span>Retained file reference: {fileId}</span>}</li>;})}</ul>

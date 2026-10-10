@@ -14,7 +14,7 @@ Before enabling a pilot:
 4. Configure KP's server-only `KP_INTEGRATION_SUPABASE_SECRET`, `SOLTA_PORTAL_SHARED_SECRET`, and enable flag. Configure Solta's `KP_PORTAL_API_URL` to this HTTPS endpoint and matching dedicated `KP_PORTAL_SHARED_SECRET`. The database credential stays in KP.
 5. Pilot synthetic companies and verify publication, foreign-company denial, revoked membership, disabled links, signature expiry and replay denial in the deployed environment.
 
-No live migration or enablement is performed by this change. The local tests are not evidence of hosted configuration.
+Hosted rollout update, October 10, 2026: both migrations were applied with user approval to KP project `yurkyxjhxvtivdrbcjuc` through its signed-in dashboard and recorded in migration history. Verification confirmed six RLS-protected tables, narrow service-role RPC permission, blocked direct anonymous/customer RPC access, private Storage and zero project mappings. Receiver deployment, secret configuration and a hosted synthetic pilot remain pending. Local tests do not prove hosted end-to-end behavior.
 
 ## Publication boundary
 

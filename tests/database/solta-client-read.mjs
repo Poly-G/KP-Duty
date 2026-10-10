@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import {readFile,readdir} from 'node:fs/promises';
+import {randomUUID} from 'node:crypto';
+import {PGlite} from '@electric-sql/pglite';
+const db=new PGlite(),admin=randomUUID(),member=randomUUID(),business=randomUUID(),otherBusiness=randomUUID(),company=randomUUID(),otherCompany=randomUUID(),project=randomUUID(),otherProject=randomUUID(),portal=randomUUID();
+await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create schema private;
+grant usage on schema public,auth,private to authenticated;grant usage on schema public,auth to service_role;
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+create function auth.jwt() returns jsonb language sql stable as $$select jsonb_build_object('role',current_setting('request.jwt.claim.role',true))$$;
+create table profiles(id uuid primary key,role text,status text);
+create function private.is_admin() returns boolean language sql stable security definer set search_path='' as $$select exists(select 1 from public.profiles where id=auth.uid() and role='admin' and status='active')$$;
+create table businesses(id uuid primary key,slug text,is_active boolean);
+create table organizations(id uuid primary key,archived_at timestamptz);
+create table projects(id uuid primary key,business_id uuid,organization_id uuid,name text,status text,archived_at timestamptz);
+create table client_engagements(id uuid primary key references projects);
+create table project_progress_updates(id uuid primary key,project_id uuid,draft_revision integer,current_work text,next_action text,milestones jsonb,published_at timestamptz);
+create table project_progress_drafts(id uuid primary key,current_work text);
+create table project_files(id uuid primary key,project_id uuid,name text,version integer,state text,audience text,created_at timestamptz,object_path text);
+create table project_messages(id uuid primary key,project_id uuid,body text,audience text,created_at timestamptz);
+insert into profiles values('${admin}','admin','active'),('${member}','team_member','active');
+insert into businesses values('${business}','solta',true),('${otherBusiness}','nex',true);
+insert into organizations values('${company}',null),('${otherCompany}',null);
+insert into projects values('${project}','${business}','${company}','Website','active',null),('${otherProject}','${otherBusiness}','${otherCompany}','PRIVATE','active',null);
+insert into client_engagements values('${project}'),('${otherProject}');
+insert into project_progress_drafts values('${project}','PRIVATE draft');
+insert into project_progress_updates values(gen_random_uuid(),'${project}',2,'Design','Review','[{"title":"Build","status":"complete","evidence":"PRIVATE"}]',now());
+insert into project_files values(gen_random_uuid(),'${project}','Shared.pdf',1,'ready','client',now(),'PRIVATE-path'),(gen_random_uuid(),'${project}','PRIVATE-file',1,'ready','internal',now(),'PRIVATE'),(gen_random_uuid(),'${project}','PRIVATE-pending',1,'pending','client',now(),'PRIVATE');
+insert into project_messages values(gen_random_uuid(),'${project}','Please review','client',now()),(gen_random_uuid(),'${project}','PRIVATE message','internal',now());`);
+const migration=(await readdir('supabase/migrations')).find(n=>n.endsWith('_solta_client_read_boundary.sql'));await db.exec(await readFile('supabase/migrations/'+migration,'utf8'));
+async function user(id){await db.exec(`reset role;set role authenticated;select set_config('request.jwt.claim.sub','${id}',false);select set_config('request.jwt.claim.role','authenticated',false);`);}
+async function link(p=project,c=company,id=portal){return db.query('select kp_link_solta_portal($1,$2,$3)',[p,c,id]);}
+await user(member);await assert.rejects(link(),/admin/);await user(admin);await link();await link();await assert.rejects(link(project,company,randomUUID()),/immutable/);await assert.rejects(link(otherProject,otherCompany,randomUUID()),/Solta/);
+await db.exec("reset role;set role service_role;select set_config('request.jwt.claim.role','service_role',false);");
+async function read(p=project,c=company,id=portal,nonce=randomUUID()){return (await db.query('select kp_read_solta_portal($1,$2,$3,$4,$5) as data',[p,c,id,'solta-client-id',nonce])).rows[0].data;}
+const nonce=randomUUID(),result=await read(project,company,portal,nonce);assert.ok(!JSON.stringify(result).includes('PRIVATE'));assert.equal(result.files.length,1);assert.equal(result.messages.length,1);assert.equal(result.progress.revision,2);await assert.rejects(read(project,company,portal,nonce),/duplicate/);
+assert.equal(await read(project,otherCompany),null);assert.equal(await read(project,company,randomUUID()),null);assert.equal(await read(otherProject,otherCompany),null);await assert.rejects(db.query('select * from project_messages'),/permission denied/);
+await user(member);await assert.rejects(read(),/permission denied/);assert.equal((await db.query('select * from solta_portal_project_links')).rows.length,0);
+await user(admin);await db.query('update solta_portal_project_links set enabled=false where project_id=$1',[project]);await db.exec("reset role;set role service_role;select set_config('request.jwt.claim.role','service_role',false);");assert.equal(await read(),null);
+await db.exec('reset role;set role anon;');await assert.rejects(read(),/permission denied/);await assert.rejects(db.query('select * from solta_portal_read_receipts'),/permission denied/);
+await db.close();console.log('Solta read database checks passed: explicit immutable links, role boundary, company/business scope, publication stripping, nonce replay, disabled mapping and anonymous denial.');

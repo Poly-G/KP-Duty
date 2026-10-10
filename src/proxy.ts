@@ -1,7 +1,9 @@
-import type { NextRequest } from "next/server";
+import {NextResponse, type NextRequest} from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 
 export default async function proxy(request: NextRequest) {
+  // Machine endpoint has its own signed authentication and a closed default.
+  if(request.nextUrl.pathname==='/api/integrations/solta/portal')return NextResponse.next();
   return updateSession(request);
 }
 

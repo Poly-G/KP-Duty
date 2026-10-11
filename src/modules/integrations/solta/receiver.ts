@@ -21,7 +21,7 @@ export async function receiveSoltaRead(request:Request,config:ReadConfig,read:(i
  let size=0;const chunks:Uint8Array[]=[];
  try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>32768){await reader.cancel();return reply({error:'Request too large'},413);}chunks.push(value);}}catch{return reply({error:'Invalid request'},400);}finally{reader.releaseLock();}
  const raw=Buffer.concat(chunks);
- const expected=createHmac('sha256',config.secret).update(timestamp+'.'+nonce+'.').update(raw).digest();if(!timingSafeEqual(expected,Buffer.from(signature,'hex')))return reply({error:'Unauthorized'},401);
+ const expected=createHmac('sha256',config.secret).update(timestamp+'.'+nonce+'.').update(raw).digest();if(!timingSafeEqual(expected,Buffer.from(signature,'hex'))){console.error('Solta receiver authentication failed','SIGNATURE_MISMATCH');return reply({error:'Unauthorized'},401);}
  let input;try{input=portalRequest.parse(JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(raw)));}catch{return reply({error:'Invalid request'},400);}
  try{const result=await read(input,nonce);return result?reply(result):reply({error:'Project not found'},404);}catch(error){if(error instanceof ReceiverError)return reply({error:error.message},error.status);return reply({error:'Connection temporarily unavailable'},503);}
 }

@@ -15,7 +15,8 @@ export async function receiveSoltaRead(request:Request,config:ReadConfig,read:(i
  const reply=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store'}});
  if(config.enabled!=='true'||!config.secret||config.secret.length<32||!config.databaseUrl||!config.databaseSecret)return reply({error:'Connection inactive'},503);
  const timestamp=request.headers.get('x-solta-timestamp')||'',nonce=request.headers.get('x-solta-nonce')||'',signature=request.headers.get('x-solta-signature')||'';
- if(!/^\d{10}$/.test(timestamp)||Math.abs(now/1000-Number(timestamp))>300||!z.uuid().safeParse(nonce).success||!/^[a-f0-9]{64}$/.test(signature))return reply({error:'Unauthorized'},401);
+ const metadataError=!/^\d{10}$/.test(timestamp)?'TIMESTAMP_FORMAT':Math.abs(now/1000-Number(timestamp))>300?'TIMESTAMP_EXPIRED':!z.uuid().safeParse(nonce).success?'NONCE_FORMAT':!/^[a-f0-9]{64}$/.test(signature)?'SIGNATURE_FORMAT':undefined;
+ if(metadataError){console.error('Solta receiver authentication failed',metadataError);return reply({error:'Unauthorized'},401);}
  if(request.headers.get('content-type')?.split(';')[0].trim().toLowerCase()!=='application/json')return reply({error:'JSON required'},415);
  const reader=request.body?.getReader();if(!reader)return reply({error:'Invalid request'},400);
  let size=0;const chunks:Uint8Array[]=[];

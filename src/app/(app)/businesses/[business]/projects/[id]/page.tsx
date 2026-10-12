@@ -1,4 +1,6 @@
 import {ProductionControls} from "@/components/projects/production-controls";
+import {SoltaClientPortal} from '@/components/projects/solta-client-portal';
+import {Suspense} from 'react';
 import {ProjectScope} from "@/components/projects/project-scope";
 import {OnboardingEditor} from "@/components/projects/onboarding-editor";
 import Link from "next/link";
@@ -24,6 +26,7 @@ export default async function DeliveryPage({params}:{params:Promise<{business:st
  return <>
   <Link href={`/businesses/${business}/clients/${project.organization.id}`} className="mb-5 inline-block text-sm text-[var(--muted)]">← {project.organization.name}</Link>
   <PageHeading eyebrow={`${project.business.name} · ${serviceTemplates[e.service].label}`} title={project.name} description={`Owner: ${project.owner.display_name || "Unassigned"}. ${e.started_at ? "Delivery start approved." : "Preparing for delivery."}`}/>
+  {business==='solta'&&admin?<Suspense fallback={<p role="status" className="mb-7 text-sm text-[var(--muted)]">Loading client portal access…</p>}><SoltaClientPortal projectId={id} companyName={project.organization.name}/></Suspense>:null}
   <section className="mb-7 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
    <h2 className="font-medium">Onboarding</h2><p className="mt-2 text-sm text-[var(--muted)]">Staff preparation · template v{e.template_version}. Client login and submission will be added later. Do not enter passwords or access tokens here.</p>
    <OnboardingEditor key={e.revision} engagement={e} business={business} companyName={project.organization.name}/>

@@ -13,6 +13,11 @@ export function driveConfig():DriveConfig{
  return {clientId,clientSecret};
 }
 export function newState(){return randomBytes(32).toString('base64url');}
+export function isDriveStartRequest(request:Request){
+ // request.url can carry an internal Vercel hostname. The browser Origin is
+ // the CSRF boundary and must match the public KP origin exactly.
+ return request.method==='POST'&&request.headers.get('origin')===new URL(DRIVE_CALLBACK).origin;
+}
 export function hashState(state:string){return createHash('sha256').update(state).digest('hex');}
 export function matchesState(state:string,cookie:string|undefined){
  if(!cookie||! /^[A-Za-z0-9_-]{43}$/.test(state)||! /^[A-Za-z0-9_-]{43}$/.test(cookie))return false;

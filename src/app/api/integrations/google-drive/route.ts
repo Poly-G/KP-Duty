@@ -1,6 +1,6 @@
 import {NextResponse} from 'next/server';
 import {requireAdminIdentity} from '@/lib/auth/current-user';
-import {authorizationUrl,driveConfig,newState,hashState,DRIVE_CALLBACK,STATE_COOKIE,STATE_PATH,STATE_TTL} from '@/modules/integrations/google-drive/oauth';
+import {authorizationUrl,driveConfig,newState,hashState,isDriveStartRequest,STATE_COOKIE,STATE_PATH,STATE_TTL} from '@/modules/integrations/google-drive/oauth';
 import {driveDatabase,drivePage} from '@/modules/integrations/google-drive/server';
 export const runtime='nodejs';
 export async function GET(){
@@ -11,8 +11,7 @@ export async function GET(){
  }catch{return drivePage('Add GOOGLE_DRIVE_CLIENT_ID and GOOGLE_DRIVE_CLIENT_SECRET to KP’s Production environment before connecting.',false,503);}
 }
 export async function POST(request:Request){
- const origin=new URL(DRIVE_CALLBACK).origin;
- if(request.headers.get('origin')!==origin||new URL(request.url).origin!==origin)return drivePage('Open this connection page on KP’s production website.',false,403);
+ if(!isDriveStartRequest(request))return drivePage('Open this connection page on KP’s production website.',false,403);
  const {user}=await requireAdminIdentity();
  try{
   const config=driveConfig(),state=newState();

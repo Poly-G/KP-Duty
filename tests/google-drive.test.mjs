@@ -2,8 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
-import {authorizationUrl,newState,matchesState,sealToken,openToken,exchangeCode,DRIVE_SCOPE,DRIVE_ACCOUNT,DRIVE_CALLBACK} from '../src/modules/integrations/google-drive/oauth.ts';
+import {authorizationUrl,newState,matchesState,sealToken,openToken,exchangeCode,isDriveStartRequest,DRIVE_SCOPE,DRIVE_ACCOUNT,DRIVE_CALLBACK} from '../src/modules/integrations/google-drive/oauth.ts';
 const config={clientId:'test-client',clientSecret:'test-only-secret'};
+test('Only public KP browser origins can start OAuth, including behind a Vercel internal request URL',()=>{
+ const request=(origin,method='POST')=>new Request('https://internal-deployment.vercel.app/api/integrations/google-drive',{method,headers:origin===undefined?{}:{Origin:origin}});
+ assert.equal(isDriveStartRequest(request('https://kp-duty.vercel.app')),true);
+ for(const origin of [undefined,'null','https://attacker.example','https://kp-duty.vercel.app.attacker.example'])assert.equal(isDriveStartRequest(request(origin)),false);
+ assert.equal(isDriveStartRequest(request('https://kp-duty.vercel.app','GET')),false);
+});
 test('Drive uses limited file scope, fixed callback and unpredictable state',()=>{
  const a=newState(),b=newState();assert.notEqual(a,b);assert.equal(matchesState(a,a),true);
  for(const cookie of [undefined,b,'short',a+'x'])assert.equal(matchesState(a,cookie),false);

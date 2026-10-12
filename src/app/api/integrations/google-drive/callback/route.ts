@@ -9,7 +9,9 @@ export async function GET(request:Request){
  const url=new URL(request.url),state=url.searchParams.get('state')||'',cookieStore=await cookies();
  const cookie=cookieStore.get(STATE_COOKIE)?.value;
  cookieStore.set(STATE_COOKIE,'',{httpOnly:true,secure:true,sameSite:'lax',path:STATE_PATH,maxAge:0});
- if(url.origin!==new URL(DRIVE_CALLBACK).origin||!matchesState(state,cookie))return drivePage('This connection attempt expired or is invalid. Start again from KP.',false,400);
+ // The fixed callback and host-only state cookie bind this response to the
+ // administrator's browser; database consumption prevents replay.
+ if(!matchesState(state,cookie))return drivePage('This connection attempt expired or is invalid. Start again from KP.',false,400);
  try{
   const db=driveDatabase();
   // Atomic consumption prevents a callback being exchanged or saved twice.

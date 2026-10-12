@@ -73,3 +73,6 @@ Migration `20261012195021_solta_google_drive_additive_storage.sql` adds a separa
 Drive uploads use private company/project folders, resumable upload links without Google credentials in the browser, server verification of size/type/SHA-256 before publication, and expiring download tickets that recheck project authorization. The current 20 MB limit remains.
 
 Validation before activation: isolated database checks cover legacy operations, the off switch, Drive completion, wrong actor/company, denied browser access and disabled mappings. Live small and >4.5 MB synthetic uploads/downloads remain pending. Google OAuth Testing refresh-token expiry remains an operational follow-up.
+
+
+Project-scoped activation supersedes the global switch. Migration `20261012203922_solta_drive_project_scoped_rollout.sql` makes new uploads opt-in through service-only `solta_drive_projects`. Only synthetic QA project `32ecdf04-8eca-4510-a300-30f0bce59465` is enabled. All other projects retain legacy storage. Production backend deployment `H8sqH7hSM5PceeLxbzgPyaaqrpza` uses d6c290c; portal deployment `2W4MGuGV813mv9g9uQzah168uSSV` uses 4d165f3.

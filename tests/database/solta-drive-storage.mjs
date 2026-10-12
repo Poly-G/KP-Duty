@@ -34,6 +34,7 @@ await db.exec("create table public.solta_drive_connection(id text primary key);i
 const legacyDefinition=(await db.query("select pg_get_functiondef('public.kp_solta_portal_operation(jsonb,uuid)'::regprocedure) as def")).rows[0].def;
 await db.exec(await readFile('supabase/migrations/20261012195021_solta_google_drive_additive_storage.sql','utf8'));
 assert.equal((await db.query("select pg_get_functiondef('public.kp_solta_portal_operation(jsonb,uuid)'::regprocedure) as def")).rows[0].def,legacyDefinition);
+await db.exec(await readFile('supabase/migrations/20261012203922_solta_drive_project_scoped_rollout.sql','utf8'));
 const project='30000000-0000-4000-8000-000000000001',company='20000000-0000-4000-8000-000000000001',portal='90000000-0000-4000-8000-000000000001',admin='00000000-0000-4000-8000-000000000001';
 async function staff(){await db.exec(`reset role;set role authenticated;select set_config('request.jwt.claim.sub','${admin}',false);select set_config('request.jwt.claim.role','authenticated',false);`);}
 async function service(){await db.exec("reset role;set role service_role;select set_config('request.jwt.claim.role','service_role',false);");}
@@ -52,6 +53,7 @@ await assert.rejects(db.query('select kp_publish_solta_preview($1,$2)',[version,
 await service();const review={requestId:randomUUID(),reviewId:version,version:1,outcome:'approved',note:'',confirmed:true};await assert.rejects(op('review.decide',review),/Approver/);await op('review.decide',review,{actorRole:'approver'});await op('review.decide',review,{actorRole:'approver'});assert.equal((await op('project.read')).reviews[0].status,'approved');checks+=4;
 await staff();await assert.rejects(db.query('select kp_review_deliverable($1,$2,$3,$4,$5,$6,$7)',[randomUUID(),version,'client_record','approved','Received','QA Client','Email']),/already responded/);checks++;
 await db.exec('reset role;set role anon');await assert.rejects(op('project.read'),/permission denied/);await assert.rejects(db.query('select * from solta_portal_files'),/permission denied/);checks+=2;
+await db.exec('reset role');await db.query('insert into solta_drive_projects(project_id,enabled) values($1,true)',[project]);await service();assert.equal((await op('file.reserve',{requestId:randomUUID(),name:'enabled.txt',size:3,mime:'text/plain',sha256:'c'.repeat(64)})).driveEnabled,true);checks++;
 await service();const driveFile={requestId:randomUUID(),name:'drive-qa.txt',size:3,mime:'text/plain',sha256:'b'.repeat(64)};await op('file.reserve',driveFile);
 await db.exec('reset role');await db.query('insert into solta_drive_files(file_id,drive_id,folder_id) values ($1,$2,$3)',[driveFile.requestId,'google-sample-file','google-sample-folder']);await service();
 await assert.rejects(op('file.complete',{fileId:driveFile.requestId,verifiedSha256:driveFile.sha256,verifiedDriveId:'wrong',verifiedSize:3}),/not verified/);

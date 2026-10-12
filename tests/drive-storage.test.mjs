@@ -13,7 +13,7 @@ test('Download tickets expire, cannot be altered, and carry only the authorized 
 test('Drive upload session is limited to the official upload endpoint',async()=>{
  const url='https://www.googleapis.com/upload/drive/v3/files?upload_id=sample';assert.equal(uploadSessionUrl(url),url);
  for(const bad of ['https://attacker.example/upload/drive/v3/files?upload_id=a','http://www.googleapis.com/upload/drive/v3/files?upload_id=a','https://www.googleapis.com/drive/v3/files?upload_id=a'])assert.throws(()=>uploadSessionUrl(bad));
- const drive=new DriveStorage('synthetic-token',async(url,options)=>{assert.equal(options.headers.Authorization,'Bearer synthetic-token');const body=JSON.parse(options.body);assert.deepEqual(body.parents,['folder']);assert.equal(body.id,'file');assert.equal(body.name,'qa.txt');return new Response(null,{headers:{Location:'https://www.googleapis.com/upload/drive/v3/files?upload_id=sample'}});});
+ const drive=new DriveStorage('synthetic-token',async(url,options)=>{assert.equal(options.headers.Authorization,'Bearer synthetic-token');assert.equal(options.headers.Origin,'https://www.soltaworks.com');const body=JSON.parse(options.body);assert.deepEqual(body.parents,['folder']);assert.equal(body.id,'file');assert.equal(body.name,'qa.txt');return new Response(null,{headers:{Location:'https://www.googleapis.com/upload/drive/v3/files?upload_id=sample'}});});
  assert.equal(await drive.start('file','folder','qa.txt','text/plain',3),url);
 });
 test('Drive downloads reject changed folder, size and oversized data',async()=>{

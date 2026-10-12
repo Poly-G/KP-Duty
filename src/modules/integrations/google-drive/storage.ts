@@ -19,7 +19,7 @@ export class DriveStorage{
   if(r.status===409){if(retried)throw new Error('Drive folder unavailable');await this.folder(folderId,name,parent,true);}
  }
  async start(fileId:string,folderId:string,name:string,mime:string,size:number){
-  const r=await this.request('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id',{method:'POST',headers:{'Content-Type':'application/json','X-Upload-Content-Type':mime,'X-Upload-Content-Length':String(size)},body:JSON.stringify({id:id(fileId),name,mimeType:mime,parents:[id(folderId)]})});
+  const r=await this.request('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id',{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://www.soltaworks.com','X-Upload-Content-Type':mime,'X-Upload-Content-Length':String(size)},body:JSON.stringify({id:id(fileId),name,mimeType:mime,parents:[id(folderId)]})});
   if(!r.ok)throw new Error('Drive upload could not be started');return uploadSessionUrl(r.headers.get('Location')||'');
  }
  async bytes(fileId:string,folderId:string,expectedSize?:number){

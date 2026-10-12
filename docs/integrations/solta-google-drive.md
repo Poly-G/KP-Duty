@@ -35,10 +35,15 @@ Verified locally: four OAuth/encryption/database security tests, existing Solta
 receiver test, TypeScript, and lint. These tests use synthetic tokens and mocks;
 Google consent and production connectivity have not yet been tested.
 
+Production deployment 6yzFqJuT6dG9XRKDSGYuJsoBPDUH is Ready (1m 10s),
+source bd61639, serving kp-duty.vercel.app. Google Audience lists only
+soltafilms@gmail.com as a test user. Opening the deployed connection page in a
+signed-out browser correctly redirects to KP login. The owner must sign into
+KP before Google authorization; no Google token has been obtained yet.
+
 Remaining before activation:
 
-- Deploy this connection route with the frozen dependency lockfile.
-- Configure Google test user/data scopes; authorize as Solta. Testing mode can
+- Sign into KP and authorize as Solta. Testing mode can
   expire refresh tokens in seven days; use the appropriate published OAuth
   configuration before relying on unattended production storage.
 - Implement project folder mapping, resumable uploads, content verification and

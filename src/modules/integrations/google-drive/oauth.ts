@@ -5,7 +5,9 @@ export const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file';
 export const DRIVE_CALLBACK='https://kp-duty.vercel.app/api/integrations/google-drive/callback';
 export const STATE_COOKIE='__Secure-solta-drive-state';
 export const STATE_PATH='/api/integrations/google-drive';
-export const STATE_TTL=600;
+// Owner setup spans multiple Google consent screens and manual handoffs.
+// Still bounded, administrator-bound, cookie-bound and consumed once.
+export const STATE_TTL=3600;
 export type DriveConfig={clientId:string;clientSecret:string};
 export function driveConfig():DriveConfig{
  const clientId=process.env.GOOGLE_DRIVE_CLIENT_ID,clientSecret=process.env.GOOGLE_DRIVE_CLIENT_SECRET;

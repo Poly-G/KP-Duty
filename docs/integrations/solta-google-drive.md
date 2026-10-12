@@ -14,7 +14,7 @@ After deploying, an active KP administrator opens
 /api/integrations/google-drive and uses the connection button. Google must grant
 openid, email and drive.file to the verified Solta account. No existing unrelated
 Drive files are requested. Callback state is random, bound to the admin and an
-HttpOnly Secure cookie, expires after ten minutes, and is consumed atomically.
+HttpOnly Secure cookie, expires after one hour, and is consumed atomically.
 The refresh token is encrypted with AES-256-GCM, using a domain-separated key
 derived from the server-side client secret. Changing that secret requires
 reconnecting. Tokens and provider error bodies are never displayed or logged.
@@ -55,3 +55,8 @@ Remaining before activation:
 
 This patch establishes the provider connection only; it does not switch uploads
 or downloads to Google Drive yet.
+
+Owner authorization attempts exceeded the initial ten-minute window (about 44
+minutes and 18 minutes). The setup state and cookie now share a bounded one-hour
+window; administrator checks, exact Google account, CSRF origin, and single-use
+database consumption remain required. No session lifetime or Drive scope changed.

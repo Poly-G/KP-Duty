@@ -76,3 +76,8 @@ Validation before activation: isolated database checks cover legacy operations, 
 
 
 Project-scoped activation supersedes the global switch. Migration `20261012203922_solta_drive_project_scoped_rollout.sql` makes new uploads opt-in through service-only `solta_drive_projects`. Only synthetic QA project `32ecdf04-8eca-4510-a300-30f0bce59465` is enabled. All other projects retain legacy storage. Production backend deployment `H8sqH7hSM5PceeLxbzgPyaaqrpza` uses d6c290c; portal deployment `2W4MGuGV813mv9g9uQzah168uSSV` uses 4d165f3.
+
+
+Live QA (2026-10-12): the synthetic 61-byte text file and 6,291,456-byte text file both uploaded from the signed-in client portal, reached ready only after server size/type/SHA verification, and downloaded with identical bytes and hashes. The root folder sharing dialog shows only soltafilms@gmail.com as Owner and Restricted general access. Invalid download ticket returned HTTP 401. Production origin session fix is 6c5ec1b deployment gTMgmQHLRUkWWmYkP9j9mXe739j6. Download progress correction is b501cd7 deployment 6D5Tc1xKbiVf1VcbfjCVwwyRyq6V.
+
+Legacy download follow-up: Chrome blocked a direct Supabase signed URL during live QA. Use the same KP ticket endpoint for both legacy and Drive downloads, preserving database authorization and private no-store attachment delivery; legacy files stay in their current storage. Retest after deployment before considering this verified.

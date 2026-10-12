@@ -39,12 +39,9 @@ export async function portalOperation(client:SupabaseClient,input:ReadRequest,no
   return {id:result.id,state:'pending',uploadUrl,uploadProvider:'google-drive'};
  }
  if(input.operation==='file.download'){
-  if(result.provider==='google-drive'){
-   const secret=process.env.SOLTA_PORTAL_SHARED_SECRET;if(!secret||secret.length<32)throw new Error('Download unavailable');
-   return {url:'https://kp-duty.vercel.app/api/integrations/solta/files?ticket='+encodeURIComponent(downloadTicket(input,secret))};
-  }
-  const {data,error}=await storage.createSignedUrl(result.path,60,{download:result.name});
-  if(error||!data)throw new Error('Download unavailable');return {url:data.signedUrl};
+  const secret=process.env.SOLTA_PORTAL_SHARED_SECRET;if(!secret||secret.length<32)throw new Error('Download unavailable');
+  return {url:'https://kp-duty.vercel.app/api/integrations/solta/files?ticket='+encodeURIComponent(downloadTicket(input,secret))};
  }
+
  return result;
 }

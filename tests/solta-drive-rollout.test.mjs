@@ -14,3 +14,10 @@ test('Unexpected Drive RPC errors never silently fall back or create an upload',
  const calls=[];const client={rpc:async(name)=>{calls.push(name);return {error:{code:'42501'}};},storage:{from:()=>({})}};
  await assert.rejects(portalOperation(client,{operation:'file.reserve',payload:{}},'sample'),/unavailable/);assert.equal(calls.length,1);
 });
+
+test('Legacy downloads receive the same expiring KP ticket as Drive files',async()=>{
+ const {randomUUID}=await import('node:crypto');const {verifyDownloadTicket}=await import('../src/modules/integrations/solta/download-ticket.ts');
+ const input={version:1,business:'solta',operation:'file.download',projectId:randomUUID(),organizationId:randomUUID(),portalProjectId:randomUUID(),actorId:randomUUID(),actorName:'QA',actorRole:'member',payload:{fileId:randomUUID()}};
+ const previous=process.env.SOLTA_PORTAL_SHARED_SECRET;process.env.SOLTA_PORTAL_SHARED_SECRET='synthetic-download-secret'.repeat(3);
+ try{const client={rpc:async()=>({data:{name:'legacy-qa.txt',path:'private/sample'}}),storage:{from:()=>({})}};const {url}=await portalOperation(client,input,randomUUID());const parsed=new URL(url);assert.equal(parsed.origin,'https://kp-duty.vercel.app');assert.deepEqual(verifyDownloadTicket(parsed.searchParams.get('ticket'),process.env.SOLTA_PORTAL_SHARED_SECRET),input);}finally{if(previous===undefined)delete process.env.SOLTA_PORTAL_SHARED_SECRET;else process.env.SOLTA_PORTAL_SHARED_SECRET=previous;}
+});

@@ -7,7 +7,7 @@ export async function GET(){
  await requireAdminIdentity();
  try{driveConfig();const {data,error}=await driveDatabase().from('solta_drive_connection').select('account_email').eq('id','solta').maybeSingle();
   if(error)return drivePage('The connection database is not ready yet.',false,503);
-  return drivePage(data?'Solta Google Drive is connected. Portal file storage will be enabled after its upload and download checks pass.':'Connect soltafilms@gmail.com to store project files. Clients will continue using their portal.',!data);
+  return drivePage(data?'Solta Google Drive is connected. Use the button below to renew access after changing Google’s app settings.':'Connect soltafilms@gmail.com to store project files. Clients will continue using their portal.',true);
  }catch{return drivePage('Add GOOGLE_DRIVE_CLIENT_ID and GOOGLE_DRIVE_CLIENT_SECRET to KP’s Production environment before connecting.',false,503);}
 }
 export async function POST(request:Request){

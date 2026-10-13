@@ -1,3 +1,4 @@
+import { EmailHealthAlert } from "@/components/projects/email-health-alert";
 import { AppShell } from "@/components/app-shell";
 import { KPSiteTools } from "@/components/webmcp/kp-site-tools";
 import { requireCurrentIdentity } from "@/lib/auth/current-user";
@@ -39,6 +40,7 @@ export default async function ProtectedLayout({
   return (
     <AppShell profile={profile} email={user.email ?? "team member"}>
       <KPSiteTools />
+      {profile.role === "admin" ? <EmailHealthAlert /> : null}
       {children}
     </AppShell>
   );

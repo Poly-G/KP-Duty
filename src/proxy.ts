@@ -3,7 +3,7 @@ import { updateSession } from "@/lib/supabase/proxy";
 
 export default async function proxy(request: NextRequest) {
   // Machine endpoint has its own signed authentication and a closed default.
-  if(['/api/integrations/solta/portal','/api/integrations/solta/files'].includes(request.nextUrl.pathname))return NextResponse.next();
+  if(['/api/integrations/solta/portal','/api/integrations/solta/files','/api/integrations/solta/notifications/retry'].includes(request.nextUrl.pathname))return NextResponse.next();
   return updateSession(request);
 }
 

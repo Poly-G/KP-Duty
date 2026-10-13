@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-13",
+  "production": {
+    "source": "1cc52cb410967ec358d5a7bea2a3432e9fc1d874",
+    "deployment": "7USj28qa8BuCcTpan2rrg9oa3yCF",
+    "status": "Ready",
+    "portal_copy_verified": "You have 1 item waiting on you."
+  },
+  "backend_tests": {
+    "passed": 31,
+    "failed": 0
+  },
+  "fresh_fixture": {
+    "company_id": "f2cb3004-f18f-4c5a-81ff-7c6d4c13f09a",
+    "project_id": "b7ab0318-2cf8-4b47-977e-1b97e581e538",
+    "company": "[QA] Solta First Client \u2014 October 13",
+    "project": "[QA] First Client Website \u2014 October 13",
+    "portal_project_id": "3caae450-e8f1-4ab6-8230-a4d5839d005c"
+  },
+  "pending": [],
+  "live_payments_created": 0,
+  "kp_billing_copy_fix": {
+    "commit": "bbcfd88",
+    "typescript": "pass",
+    "scoped_lint": "pass",
+    "production_verified": false
+  },
+  "completed": [
+    "Two confirmed inboxes provisioned, one approver and one member",
+    "Both welcome emails accepted for delivery",
+    "Owner confirmed Gmail teammate sign-in",
+    "Approver uploaded verified DOCX and sent message",
+    "Approver approved exact version 1",
+    "Member approval disabled for fresh version 2",
+    "Member changes request saved for version 2 without inheriting version 1 approval",
+    "Member message saved and PPTX verified after refreshed-session retry",
+    "Stripe Sandbox $5 fake-card payment confirmed in client portal and KP",
+    "Owner confirmed contact inbox welcome email delivery",
+    "Staff page displays both incoming client messages and both verified uploads",
+    "Staff download matches uploaded Word file byte-for-byte",
+    "Anonymous staff download request redirects to sign-in",
+    "Completed QA and deployment tabs closed; one KP project tab retained"
+  ],
+  "test_payment_request_id": "23b4fcbc-6025-42b8-ad36-abfa2dbd79b6",
+  "kp_incoming_submissions_fix": {
+    "commit": "0c4a83769b52deb25d9900ffc071cefda0d4ed2c",
+    "preview_deployment": "CPS7NCpSHY7wDNpfDtspi3KVtziT",
+    "ready": true,
+    "production_build": "pass",
+    "typescript": "pass",
+    "scoped_lint": "pass",
+    "storage_tests_passed": 6,
+    "isolated_database_checks_passed": 21,
+    "production_promotion": "Ready and verified on kp-duty.vercel.app",
+    "production_deployment": "AAYLqF2uKdMMSmyrpCqqGvPQCAGP",
+    "staff_messages_visible": true,
+    "staff_files_visible": true,
+    "staff_download": {
+      "name": "solta-qa-copy.docx",
+      "bytes": 844,
+      "sha256": "ee31a3cfb3607210ef8a5d297ef5a16eec08dc5dbc195a60b1977196a5535256",
+      "matches_original": true
+    },
+    "anonymous_download_status": 307
+  },
+  "limitations": [
+    "Live Stripe-signed delivery awaits a genuine customer payment; no real-money test performed",
+    "Teammate upload initially returned Please sign in; retry after refreshing the confirmed session passed"
+  ]
+}

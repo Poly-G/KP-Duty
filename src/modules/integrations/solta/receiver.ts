@@ -1,10 +1,11 @@
 import {createHmac,timingSafeEqual} from 'node:crypto';
 import {z} from 'zod';
+import {MAX_FILE_BYTES,PROJECT_FILE_MIME_TYPES} from '../../project-collaboration/files.ts';
 export const readRequest=z.object({version:z.literal(1),operation:z.literal('project.read'),business:z.literal('solta'),projectId:z.uuid(),organizationId:z.uuid(),portalProjectId:z.uuid(),actorId:z.string().min(1).max(100)}).strict();
 const base=readRequest.omit({operation:true}).extend({actorName:z.string().trim().min(1).max(100),actorRole:z.enum(['member','approver'])});
 export const portalRequest=z.union([readRequest,
  base.extend({operation:z.literal('message.create'),payload:z.object({requestId:z.uuid(),body:z.string().trim().min(1).max(10000)}).strict()}).strict(),
- base.extend({operation:z.literal('file.reserve'),payload:z.object({requestId:z.uuid(),name:z.string().regex(/^[a-zA-Z0-9._-]{1,180}$/).refine(n=>n!=='.'&&n!=='..'),size:z.number().int().min(1).max(20971520),mime:z.enum(['application/pdf','image/png','image/jpeg','image/heic','image/heif','text/plain','text/csv','application/vnd.openxmlformats-officedocument.wordprocessingml.document']),sha256:z.string().regex(/^[a-f0-9]{64}$/)}).strict()}).strict(),
+ base.extend({operation:z.literal('file.reserve'),payload:z.object({requestId:z.uuid(),name:z.string().regex(/^[a-zA-Z0-9._-]{1,180}$/).refine(n=>n!=='.'&&n!=='..'),size:z.number().int().min(1).max(MAX_FILE_BYTES),mime:z.enum(PROJECT_FILE_MIME_TYPES),sha256:z.string().regex(/^[a-f0-9]{64}$/)}).strict()}).strict(),
  base.extend({operation:z.enum(['file.complete','file.download']),payload:z.object({fileId:z.uuid()}).strict()}).strict(),
  base.extend({operation:z.literal('review.decide'),payload:z.object({requestId:z.uuid(),reviewId:z.uuid(),version:z.number().int().positive(),outcome:z.enum(['approved','changes_requested']),note:z.string().trim().max(5000),confirmed:z.boolean()}).strict().refine(p=>p.outcome!=='changes_requested'||p.note.length>0)}).strict(),
 ]);

@@ -38,6 +38,15 @@ select kp_approve_scope('40000000-0000-4000-8000-000000000099','Client','client@
 select kp_save_client_delivery('30000000-0000-4000-8000-000000000099',4,'{"onboarding_reviewed":true,"access_ready":true,"capacity_ready":true,"payment_required":false}',false);
 select kp_save_client_delivery('30000000-0000-4000-8000-000000000099',5,'{}',true);reset role;`);
 await db.exec(await readFile(new URL('../../supabase/migrations/20261008002718_production_stage_gates.sql',import.meta.url),'utf8'));
+await db.exec(`create role service_role;
+create table public.solta_portal_project_links(project_id uuid primary key references projects(id),enabled boolean);
+create table public.solta_portal_previews(version_id uuid primary key references deliverable_publications(id),preview_url text,published_by uuid references profiles(id),published_at timestamptz default now());
+create table public.solta_portal_decisions(id uuid primary key,version_id uuid unique references solta_portal_previews(version_id),outcome text check(outcome in ('approved','changes_requested')));
+alter table public.solta_portal_decisions enable row level security;revoke all on public.solta_portal_decisions from public,anon,authenticated,service_role;`);
+const collaborationSql=await readFile(new URL('../../supabase/migrations/20261010162451_solta_client_collaboration.sql',import.meta.url),'utf8');
+await db.exec(collaborationSql.slice(collaborationSql.indexOf('create function private.publish_solta_preview('),collaborationSql.indexOf('-- One bounded operation')));
+await db.exec(await readFile(new URL('../../supabase/migrations/20261013042513_solta_portal_review_workflow.sql',import.meta.url),'utf8'));
+
 import {randomUUID} from 'node:crypto';
 const admin='00000000-0000-4000-8000-000000000001',company='20000000-0000-4000-8000-000000000001';
 async function user(n){await db.exec(`reset role;set role authenticated;select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-00000000000${n}',false);`);}
@@ -93,5 +102,21 @@ for(const [service,business] of [['branding','solta'],['less_office','solta'],['
  if(service==='branding'){const b=await deliverable(sample,'brand_direction');await gate(sample,'brand_direction',b.v);await advance(sample,'visual');}else{await assert.rejects(gate(sample,'brand_direction',brand.v),/does not apply/);await advance(sample,'build');}
  await advance(sample,'qa');const r=await deliverable(sample,'launch');await gate(sample,'qa',r.v);await advance(sample,'launch');await gate(sample,'launch',r.v);await advance(sample,'handoff');await gate(sample,'handoff',r.v);await advance(sample,'complete');
 }
+
+await user(1);const portalProject=await setup('branding'),portalBrand=await deliverable(portalProject,'brand_direction',false);
+await assert.rejects(db.query('select kp_publish_solta_delivery($1,$2)',[portalBrand.v,'https://www.soltaworks.com/demos/northfield']),/linked version/);
+assert.equal((await db.query('select * from deliverable_publications where id=$1',[portalBrand.v])).rows.length,0,'failed preview published the deliverable');
+await db.exec('reset role');await db.query('insert into solta_portal_project_links values($1,true)',[portalProject]);await user(1);
+await assert.rejects(db.query('select kp_publish_solta_delivery($1,$2)',[portalBrand.v,'http://insecure.example/']),/HTTPS/);assert.equal((await db.query('select * from deliverable_publications where id=$1',[portalBrand.v])).rows.length,0);
+await db.query('select kp_publish_solta_delivery($1,$2)',[portalBrand.v,'https://www.soltaworks.com/demos/northfield']);await db.query('select kp_publish_solta_delivery($1,$2)',[portalBrand.v,'https://www.soltaworks.com/demos/northfield']);
+await assert.rejects(db.query('select kp_publish_solta_delivery($1,$2)',[portalBrand.v,'https://www.soltaworks.com/changed']),/immutable/);
+await assert.rejects(gate(portalProject,'brand_direction',portalBrand.v),/client approval/);
+await assert.rejects(db.query('insert into solta_portal_decisions values($1,$2,$3)',[randomUUID(),portalBrand.v,'approved']),/permission denied/);
+await db.exec('reset role');await db.query('insert into solta_portal_decisions values($1,$2,$3)',[randomUUID(),portalBrand.v,'changes_requested']);await user(1);await assert.rejects(gate(portalProject,'brand_direction',portalBrand.v),/client approval/);
+await db.exec('reset role');await db.query("update solta_portal_decisions set outcome='approved' where version_id=$1",[portalBrand.v]);await user(2);await assert.rejects(gate(portalProject,'brand_direction',portalBrand.v),/Admin/);await user(1);
+const beforePortalGate=await state(portalProject);await gate(portalProject,'brand_direction',portalBrand.v);assert.equal((await state(portalProject)).stage,beforePortalGate.stage,'approval changed production stage');
+const portalNext=randomUUID();await db.query('select kp_add_deliverable_version($1,$2,1,$3,$4)',[portalNext,portalBrand.d,'New version needs fresh approval',[]]);await reviews(portalNext,false);await assert.rejects(gate(portalProject,'brand_direction',portalNext),/client approval/);await assert.rejects(gate(portalProject,'brand_direction',portalBrand.v),/current matching/);
+await user(3);await assert.rejects(db.query('select kp_publish_solta_delivery($1,$2)',[portalNext,'https://www.soltaworks.com/demos/northfield']),/Active/);
+await db.exec('reset role;set role anon');await assert.rejects(db.query('select kp_publish_solta_delivery($1,$2)',[portalNext,'https://www.soltaworks.com/demos/northfield']),/permission denied/);
 await db.exec('reset role;set role anon;');await assert.rejects(db.query('select * from production_stage_events'),/permission denied/);await assert.rejects(state(p),/permission denied/);
 await db.close();console.log('Production gate checks passed: all five service paths, exact-version evidence, sequential advancement, revision invalidation, scope/intake dependencies, explicit QA/launch/handoff, stale/retry safety, admin authority and direct/blocked-stage/inactive/anonymous bypass denial.');

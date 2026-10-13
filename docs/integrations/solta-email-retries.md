@@ -33,3 +33,13 @@ Disabled ticks reject worker authorization. Existing queued events remain stored
 ## Validation
 
 24 isolated database checks cover role restrictions, disabled defaults, hashed credentials, single use, expiry, overlapping leases, guarded completion, disabled mappings/client updates, manual-review exclusion and HTTP failure recording. Three runtime tests cover token parsing and scheduler health thresholds. Run notification and scope regression checks plus the production build and scoped lint.
+
+## Hosted QA — October 13, 2026
+
+KP worker commit 4a1c0b8 was rebuilt in Production as 9hiXEERbdPT4soDSk2LT1FL7r3ND and assigned to kp-duty.vercel.app. Follow-up database fix 05d19b9 is applied. All 84 local checks passed (24 retry database, 3 health/token, 30 notification and 27 scope regressions), with scoped lint and the production build. Hosted missing/forged credentials returned 401; GET returned 405.
+
+Scheduler job 2 is active at */5 * * * *, and notification controls still allow only QA project b7ab0318-2cf8-4b47-977e-1b97e581e538. The synthetic QA message 6714686e-8cc8-4455-a5a8-11c1abb15ea6 queued event 73cb3472-0f86-4c3d-8fdf-9c0234e35c6c. Its attempt counter was deliberately set to 3 to simulate a delayed event; no previous provider send was reset. The global KP admin warning appeared with the correct project link. No project page was opened during this recovery test.
+
+The real Cron run began at 20:15:00 UTC, the worker began at 20:15:01, the event was marked sent at 20:15:03, and the worker completed at 20:15:04. The HTTP response was 200. Solta recorded exactly one recipient delivery, and Resend confirmed Delivered for provider email 01a136e7-8085-7c03-a852-5abef3796c52 to contact@soltaworks.com. A further scheduler tick produced no new network request or duplicate delivery. Pending events and active tick tokens returned to zero, and the KP warning cleared on refresh. No payment was created or charged. Completed release and QA tabs were closed.
+
+Proof images: /private/tmp/solta-email-retry-warning-detail.png and /private/tmp/solta-automatic-retry-delivered.png. These temporary files are supporting evidence; the database delivery records remain the durable audit trail.

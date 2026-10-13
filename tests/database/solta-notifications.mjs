@@ -13,6 +13,10 @@ try{
  create table public.projects(id uuid primary key,name text,organization_id uuid,archived_at timestamptz,business_id uuid);
  create table public.client_engagements(id uuid primary key references projects);
  create table public.solta_portal_project_links(project_id uuid primary key,organization_id uuid,portal_project_id uuid,enabled boolean);
+ create table public.project_messages(id uuid primary key,project_id uuid,audience text,body text);
+ create table public.project_progress_updates(id uuid primary key,project_id uuid,current_work text);
+ create table public.project_files(id uuid primary key,project_id uuid,audience text,state text,name text,version integer);
+ create table public.solta_portal_previews(version_id uuid primary key);
  create table public.solta_portal_messages(id uuid primary key,project_id uuid,actor_name text,body text);
  create table public.solta_portal_files(id uuid primary key,project_id uuid,name text,state text);
  create table public.project_deliverables(id uuid primary key,project_id uuid,title text);
@@ -21,6 +25,7 @@ try{
  create table public.solta_payment_requests(id uuid primary key,project_id uuid,title text,amount integer,livemode boolean,status text);
  `);
  await db.exec(await readFile('supabase/migrations/20261013165904_solta_project_notification_outbox.sql','utf8'));
+ await db.exec(await readFile('supabase/migrations/20261013184549_solta_client_update_notifications.sql','utf8'));
  await db.query('insert into businesses values($1,$2,true)',[business,'solta']);await db.query('insert into organizations values($1,$2,null)',[organization,'[QA] Company']);await db.query('insert into projects values($1,$2,$3,null,$4)',[project,'QA website',organization,business]);await db.query('insert into client_engagements values($1)',[project]);await db.query('insert into solta_portal_project_links values($1,$2,$3,true)',[project,organization,portal]);
  await db.query('insert into solta_portal_messages values($1,$2,$3,$4)',[randomUUID(),project,'Member','Old event']);assert.equal((await db.query('select * from solta_notification_events')).rows.length,0);checks++;
  await db.query("update solta_notification_control set enabled=true,allowed_projects=$1",[JSON.stringify([project])]);
@@ -41,5 +46,17 @@ try{
  await db.exec("reset role;update solta_notification_events set error_code=null;update solta_notification_control set enabled=false;set role service_role");assert.equal((await db.query('select * from kp_claim_solta_notifications($1,$2)',[project,randomUUID()])).rows.length,0);checks++;
  await db.exec("reset role;update solta_notification_control set enabled=true;update businesses set slug='snd';set role service_role");assert.equal((await db.query('select * from kp_claim_solta_notifications($1,$2)',[project,randomUUID()])).rows.length,0);checks++;
  await db.exec("reset role;update businesses set slug='solta',is_active=false;set role service_role");assert.equal((await db.query('select * from kp_claim_solta_notifications($1,$2)',[project,randomUUID()])).rows.length,0);checks++;
+ await db.exec("reset role;update businesses set is_active=true;update solta_notification_events set status='sent'");
+ await db.query('insert into project_messages values($1,$2,$3,$4)',[randomUUID(),project,'client','Old client message']);assert.equal((await db.query("select count(*)::int n from solta_notification_events where event_kind='message.shared'")).rows[0].n,0);checks++;
+ await db.exec("update solta_notification_control set client_updates_enabled=true");
+ await db.query('insert into project_messages values($1,$2,$3,$4)',[randomUUID(),project,'internal','Private internal note']);assert.equal((await db.query("select count(*)::int n from solta_notification_events where event_kind='message.shared'")).rows[0].n,0);checks++;
+ await db.query('insert into project_messages values($1,$2,$3,$4)',[randomUUID(),project,'client','Private client message']);
+ await db.query('insert into project_progress_updates values($1,$2,$3)',[randomUUID(),project,'Private progress text']);
+ const shared=randomUUID();await db.query('insert into project_files values($1,$2,$3,$4,$5,$6)',[shared,project,'internal','ready','qa.docx',2]);assert.equal((await db.query("select count(*)::int n from solta_notification_events where event_kind='file.shared'")).rows[0].n,0);checks++;
+ await db.query("update project_files set audience='client' where id=$1",[shared]);await db.query("update project_files set audience='client' where id=$1",[shared]);
+ await db.query('insert into solta_portal_previews values($1)',[version]);
+ const updates=(await db.query("select event_kind,payload from solta_notification_events where event_kind in ('message.shared','progress.published','file.shared','preview.published')")).rows;
+ assert.equal(updates.length,4);assert.ok(updates.every(e=>!JSON.stringify(e.payload).includes('Private')));assert.equal(updates.find(e=>e.event_kind==='preview.published').payload.versionNumber,2);checks+=3;
+ await db.exec("update solta_portal_project_links set enabled=false");await db.query('insert into project_messages values($1,$2,$3,$4)',[randomUUID(),project,'client','Disabled mapping']);assert.equal((await db.query("select count(*)::int n from solta_notification_events where event_kind='message.shared'")).rows[0].n,1);checks++;
  console.log(JSON.stringify({checks,isolatedDatabase:true,emailsSent:0,liveWrites:0}));
 }finally{await db.close();}

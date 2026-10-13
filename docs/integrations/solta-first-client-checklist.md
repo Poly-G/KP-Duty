@@ -9,7 +9,7 @@ Use KP for client setup and delivery. The public Solta site handles enquiries, c
 3. In Client portal access, enter one final approver and any teammates. Verify every email and confirm company-wide access. Changing the final approver affects all projects belonging to that company.
 4. Finish setup, then use each person's Send welcome email action. Setup alone does not send invitations. Each client opens the invitation and signs in using their own email link.
 
-The $799 Less Office Work offer stays inquiry-only until the owner chooses a payment arrangement.
+The $799 Standard office offer is one task, paid after approval of the written scope. Multiple tasks and broader processes require a separate quote. Use an office scope starter for the three supported task types; confirm compatibility and software costs before preparing the scope.
 
 ## Payment and communication
 
@@ -31,6 +31,6 @@ If request publication is interrupted, reload and use Retry publishing on the ex
 
 Independent local checks passed: 11 Solta onboarding/payment tests, 3 KP setup workflow tests, 24 isolated onboarding database checks and 24 isolated payment database checks. These tests made no live writes.
 
-The fresh synthetic company test in the Build out the project chat has verified two welcome invitations, a sandbox payment synchronized to KP, exact-version approval, and teammate restrictions. The staff display of incoming client messages/files is being fixed and verified there. Do not call that remaining check complete until its live result is recorded.
+The fresh synthetic company test in the Build out the project chat has verified two welcome invitations, a sandbox payment synchronized to KP, exact-version approval, and teammate restrictions. The staff display and private download fix is live; the downloaded file matched the original exactly.
 
 No real client invitation, live payment request or launch was created by this checklist. Live Stripe-signed delivery will be confirmed when the first authorized real payment occurs; sandbox checks do not prove a live charge.

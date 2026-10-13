@@ -5,7 +5,8 @@ import {createClient as integrationClient} from '@supabase/supabase-js';
 import {z} from 'zod';
 import {requireAdminIdentity} from '@/lib/auth/current-user';
 import {createClient} from '@/lib/supabase/server';
-import {getDelivery} from '@/modules/delivery/queries';
+import {getDelivery,getScopes} from '@/modules/delivery/queries';
+import {assertOfficePaymentScope} from './office-scope';
 import {BillingError,requestDetails,type BillingStatus} from './contract';
 import {soltaBillingRequest} from './client';
 async function context(projectId:string){
@@ -16,6 +17,12 @@ async function context(projectId:string){
  return {version:1 as const,business:'solta' as const,actorId:user.id,projectId,organizationId:delivery.project.organization.id,portalProjectId:link.portal_project_id};
 }
 function friendly(error:unknown){return error instanceof BillingError?error.message:error instanceof z.ZodError?'Check the payment title, amount, mode and confirmation.':'Billing was interrupted. Retry the same request or refresh payment status.';}
+async function checkOfficeScope(projectId:string,requestScopeId?:string|null){
+ const delivery=await getDelivery(projectId,'solta');
+ if(delivery?.engagement.service!=='less_office')return;
+ const scopes=await getScopes(projectId);
+ try{assertOfficePaymentScope('less_office',scopes.versions[0]?.id,scopes.approvals.map(a=>a.scope_id),requestScopeId);}catch(error){throw new BillingError(409,(error as Error).message);}
+}
 async function reconcile(status:BillingStatus){
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.KP_INTEGRATION_SUPABASE_SECRET;if(!url||!key)throw new BillingError(503,'Payment sync is not configured.');
  const viewer=await createClient(),ids=status.records.filter(r=>r.payment).map(r=>r.requestId);if(!ids.length)return;
@@ -33,6 +40,7 @@ export async function requestSoltaPayment(data:FormData){
   const source=await context(String(data.get('project_id')||''));const dollars=String(data.get('amount')||'').trim();if(!/^\d{1,6}(\.\d{1,2})?$/.test(dollars))throw new BillingError(400,'Enter a dollar amount with up to two decimal places.');
   const payload=requestDetails.parse({requestId:data.get('request_id'),title:data.get('title'),amount:Math.round(Number(dollars)*100),currency:'usd',livemode:data.get('mode')==='live',confirmed:data.get('confirmed')==='on'});
   if(!['test','live'].includes(String(data.get('mode'))))throw new BillingError(400,'Choose a payment mode.');
+  await checkOfficeScope(source.projectId);
   const db=await createClient();const {data:prepared,error}=await db.rpc('kp_prepare_solta_payment',{p_id:payload.requestId,p_project:source.projectId,p_title:payload.title,p_amount:payload.amount,p_live:payload.livemode});
   if(error)throw new BillingError(409,error.code==='P0001'?error.message:'Payment preparation is unavailable.');
   if(prepared.requestId!==payload.requestId||prepared.projectId!==source.projectId||prepared.organizationId!==source.organizationId||prepared.portalProjectId!==source.portalProjectId)throw new BillingError(409,'Payment identity changed. Reload before continuing.');
@@ -49,6 +57,7 @@ export async function cancelSoltaPayment(data:FormData){
 }
 export async function retrySoltaPayment(data:FormData){
  try{const source=await context(String(data.get('project_id')||'')),requestId=z.uuid().parse(data.get('request_id')),db=await createClient();const {data:row,error}=await db.from('solta_payment_requests').select('*').eq('id',requestId).eq('project_id',source.projectId).eq('organization_id',source.organizationId).eq('portal_project_id',source.portalProjectId).maybeSingle();if(error||!row||row.status!=='prepared')throw new BillingError(409,'Refresh before retrying this payment request.');
+  await checkOfficeScope(source.projectId,row.scope_id);
   const remote=await soltaBillingRequest({...source,operation:'create',payload:{requestId,title:row.title,amount:row.amount,currency:'usd',livemode:row.livemode,confirmed:true}});const record=remote.records.find(r=>r.requestId===requestId);if(!record)throw new BillingError(503,'Payment request could not be confirmed.');await reconcile(remote);const saved=await db.rpc('kp_mark_solta_payment',{p_id:requestId,p_cancel:!record.active});if(saved.error)throw new BillingError(503,'Payment request needs refresh.');revalidatePath(`/businesses/solta/projects/${source.projectId}`);return {ok:true as const};
  }catch(error){return {ok:false as const,error:friendly(error)};}
 }

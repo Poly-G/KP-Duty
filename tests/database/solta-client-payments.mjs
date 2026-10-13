@@ -35,7 +35,9 @@ await db.exec(await readFile('supabase/migrations/20261012212909_solta_client_on
 const project='30000000-0000-4000-8000-000000000001',company='20000000-0000-4000-8000-000000000001',admin='00000000-0000-4000-8000-000000000001';
 const {randomUUID}=await import('node:crypto');let checks=0;
 
+await db.exec(await readFile('supabase/migrations/20261008001823_versioned_commercial_scopes.sql','utf8'));
 await db.exec(await readFile('supabase/migrations/20261013004838_solta_client_payments.sql','utf8'));
+await db.exec(await readFile('supabase/migrations/20261013163548_solta_office_scope_before_payment.sql','utf8'));
 async function staff(id=admin){await db.exec(`reset role;set role authenticated;select set_config('request.jwt.claim.sub','${id}',false);select set_config('request.jwt.claim.role','authenticated',false)`);}
 async function service(){await db.exec("reset role;set role service_role;select set_config('request.jwt.claim.role','service_role',false)");}
 const request=randomUUID(),portal=randomUUID();
@@ -53,5 +55,24 @@ await service();await assert.rejects(receive({...event,amount:501}),/does not ma
 const nonce=randomUUID();assert.equal((await receive(event,nonce)).rows[0].value.received,true);await assert.rejects(receive(event,nonce),/duplicate key/);assert.equal((await receive()).rows[0].value.received,true);await assert.rejects(receive({...event,paymentId:randomUUID()}),/reconciliation/);checks+=4;
 await db.exec('reset role');assert.equal((await db.query('select status from solta_payment_requests where id=$1',[request])).rows[0].status,'paid');assert.equal((await db.query('select started_at from client_engagements where id=$1',[project])).rows[0].started_at,null);assert.equal((await db.query('select payment_evidence from client_engagements where id=$1',[project])).rows[0].payment_evidence,null);checks+=3;
 await staff();await assert.rejects(db.query('select kp_mark_solta_payment($1,true)',[request]),/cannot be cancelled/);const unused=randomUUID();await prepare(unused);await db.query('select kp_mark_solta_payment($1,true)',[unused]);await assert.rejects(db.query('select kp_mark_solta_payment($1,false)',[unused]),/cancelled/);checks+=2;
+// Office payment creation binds to the exact current client-approved scope.
+await staff();
+const office=randomUUID(),officePortal=randomUUID(),scope1=randomUUID(),scope2=randomUUID(),officeRequest=randomUUID();
+await db.query('select kp_create_client_delivery($1,$2,$3,$4,$5)',[office,'solta',company,'QA office','less_office']);
+await db.query('select kp_link_solta_portal($1,$2,$3)',[office,company,officePortal]);
+const officePrepare=(id=officeRequest)=>db.query('select kp_prepare_solta_payment($1,$2,$3,$4,$5) as value',[id,office,'Standard office work',79900,false]);
+await assert.rejects(officePrepare(),/Approve the current office-work scope/);checks++;
+await db.query('select kp_save_scope($1,$2,$3,$4,$5,$6,$7,$8)',[scope1,office,0,'One task and tested result','No broader work','$799 after approval','5–10 business days','Initial scope']);
+await assert.rejects(officePrepare(),/Approve the current office-work scope/);checks++;
+await db.query('select kp_approve_scope($1,$2,$3,$4)',[scope1,'Synthetic client','qa@example.invalid','Isolated test approval only']);
+assert.equal((await officePrepare()).rows[0].value.scopeId,scope1);checks++;
+assert.equal((await officePrepare()).rows[0].value.scopeId,scope1);checks++;
+await db.query('select kp_save_scope($1,$2,$3,$4,$5,$6,$7,$8)',[scope2,office,1,'Revised one task','No broader work','$799 after approval','5–10 business days','Revised scope']);
+await assert.rejects(officePrepare(),/Scope changed/);checks++;
+await assert.rejects(officePrepare(randomUUID()),/Approve the current office-work scope/);checks++;
+await db.query('select kp_approve_scope($1,$2,$3,$4)',[scope2,'Synthetic client','qa@example.invalid','Isolated revised approval only']);
+await assert.rejects(officePrepare(),/Scope changed/);checks++;
+assert.equal((await officePrepare(randomUUID())).rows[0].value.scopeId,scope2);checks++;
+await db.exec('reset role');assert.equal((await db.query('select started_at from client_engagements where id=$1',[office])).rows[0].started_at,null);checks++;
 await db.exec('reset role');await db.query('update projects set archived_at=now() where id=$1',[project]);await staff();await assert.rejects(prepare(randomUUID()),/Active connected/);checks++;
 await db.close();console.log(JSON.stringify({checks,isolatedDatabase:true,liveWrites:0}));

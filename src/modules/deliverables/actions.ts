@@ -73,7 +73,10 @@ export async function publishDeliverable(form:FormData) {
   const {projectId,business,db}=await context(form);
   const versionId=uuid.parse(form.get('version_id'));
   await verifyVersion(db,versionId,projectId);
-  const {error}=await db.rpc('kp_publish_deliverable',{p_version:versionId});
+  const raw=String(form.get('preview_url')||'').trim();
+  let preview:string|null=null;
+  if(raw){const url=new URL(z.string().max(2000).parse(raw));if(business!=='solta'||url.protocol!=='https:'||url.username||url.password)throw new Error('Use a client-accessible HTTPS preview link.');preview=url.href;}
+  const {error}=preview?await db.rpc('kp_publish_solta_delivery',{p_version:versionId,p_url:preview}):await db.rpc('kp_publish_deliverable',{p_version:versionId});
   if(error) throw new Error(error.message);
   refresh(projectId,business);
 }

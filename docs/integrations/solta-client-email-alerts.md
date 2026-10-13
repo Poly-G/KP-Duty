@@ -1,6 +1,6 @@
 # Solta client email alerts
 
-Sign-in and welcome emails are working. Public website deposits notify Solta. Project messages, verified files, review decisions, payment requests and confirmed portal payments now have a durable notification queue and branded delivery endpoint. Local verification passed and the approved commits were released. Both hosted controls allow only the synthetic first-client project. Message, verified-file, exact-version changes-request and payment-request emails are confirmed delivered in Resend. The payment-confirmation email test is pending sandbox Checkout completion.
+Sign-in and welcome emails are working. Public website deposits notify Solta. Project messages, verified files, review decisions, payment requests and confirmed portal payments now have a durable notification queue and branded delivery endpoint. Local verification passed and the approved commits were released. Both hosted controls allow only the synthetic first-client project. Message, verified-file, exact-version changes-request and payment-request emails are confirmed delivered in Resend. The Sandbox payment-confirmation email is also verified delivered; all five implemented event kinds passed hosted QA.
 
 ## Current status
 
@@ -16,7 +16,7 @@ Sign-in and welcome emails are working. Public website deposits notify Solta. Pr
 | Staff shares a file or publishes a working preview | Makes the published file/version available in the portal. | No operational email is sent. |
 | Client approves or requests changes | Saves the decision for the exact version and displays it in KP. | Verified delivered for the QA project in Resend (October 13). |
 | KP publishes a portal payment request | Makes the fixed-amount request available in Payments. | Verified delivered for the QA project in Resend (October 13). |
-| A portal payment succeeds | Records the verified payment, synchronizes it to KP and provides the Stripe receipt link. | Implemented through KP verified-payment event capture; awaiting hosted QA activation. |
+| A portal payment succeeds | Records the verified payment, synchronizes it to KP and provides the Stripe receipt link. | Verified delivered after the signed Sandbox payment synchronized to KP. |
 
 ## Alert plan
 
@@ -69,4 +69,4 @@ Scope: only KP project `b7ab0318-2cf8-4b47-977e-1b97e581e538`, portal project `3
 
 Verified delivered to contact@soltaworks.com: synthetic client message; verified `solta-notification-qa.txt`; changes request for website version 3; request for `[QA] Email-alert sandbox payment — no real money`. Message and request acknowledgement retries retained one provider email per event. Request `e8a47e4d-5d48-4041-9f29-1fb2d44d0643` is $5 in Stripe Sandbox (`livemode=false`). No real money test occurred.
 
-Payment completion currently waits for a Chrome extension popup to be dismissed. Do not describe the paid alert as verified until the signed Stripe event, both ledgers and provider delivery have been read back. No real-client alerts are enabled.
+Sandbox Checkout completed October 13 at 11:40 AM Pacific using Stripe’s standard fake card. Both ledgers record $5.00 and livemode=false; KP captured payment.received and acknowledged notification delivery. Resend reports the payment confirmation delivered to contact@soltaworks.com (provider id 01a13690-a6bc-707d-8060-a1f59c590563). The internal inbox and active approver are the same address, so one recipient email is intentional. All five queue events and all five delivery records are sent; a final retry created no additional delivery. No real-client alerts are enabled and no real money was charged.

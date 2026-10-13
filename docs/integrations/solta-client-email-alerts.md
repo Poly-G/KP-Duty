@@ -1,6 +1,6 @@
 # Solta client email alerts
 
-Sign-in and welcome emails are working. Public website deposits notify Solta. Project messages, files, reviews and portal payments are recorded and visible in the portal/KP, but their operational email alerts still need to be implemented.
+Sign-in and welcome emails are working. Public website deposits notify Solta. Project messages, verified files, review decisions, payment requests and confirmed portal payments now have a durable notification queue and branded delivery endpoint. Local verification passed; hosted tables are installed with delivery disabled. Hosted release and QA inbox delivery are still pending.
 
 ## Current status
 
@@ -10,13 +10,13 @@ Sign-in and welcome emails are working. Public website deposits notify Solta. Pr
 | Welcome invitation sent from KP | Sends the branded portal button to the selected person after access setup completes. | Both QA inboxes confirmed delivery. |
 | Public quote/enquiry submitted | Sends the enquiry to the internal inbox. | Quote delivery previously verified. |
 | Public standard website deposit paid | Verifies Stripe's event and sends an internal deposit email. | Sandbox email verified; live signed delivery awaits a genuine payment. |
-| Client posts a message | Saves the message in KP and displays it for staff. | No email sender is connected to this event. |
-| Client uploads a file | Verifies the stored file and makes it available to authorized clients/staff. | No email sender is connected to file completion. |
+| Client posts a message | Saves the message in KP and displays it for staff. | Implemented; awaiting hosted QA activation. |
+| Client uploads a file | Verifies the stored file and makes it available to authorized clients/staff. | Implemented; awaiting hosted QA activation. |
 | Staff posts a client message or publishes progress | Publishes the client-visible record and creates a held notification job. | Held jobs have no delivery worker; they are not sent. |
 | Staff shares a file or publishes a working preview | Makes the published file/version available in the portal. | No operational email is sent. |
-| Client approves or requests changes | Saves the decision for the exact version and displays it in KP. | No operational email is sent. |
-| KP publishes a portal payment request | Makes the fixed-amount request available in Payments. | No request email is sent. |
-| A portal payment succeeds | Records the verified payment, synchronizes it to KP and provides the Stripe receipt link. | The portal webhook has no Solta notification email sender. Public deposit email behavior does not cover portal requests. |
+| Client approves or requests changes | Saves the decision for the exact version and displays it in KP. | Implemented; awaiting hosted QA activation. |
+| KP publishes a portal payment request | Makes the fixed-amount request available in Payments. | Implemented; awaiting hosted QA activation. |
+| A portal payment succeeds | Records the verified payment, synchronizes it to KP and provides the Stripe receipt link. | Implemented through KP verified-payment event capture; awaiting hosted QA activation. |
 
 ## Alert plan
 
@@ -50,3 +50,13 @@ Test every alert using the synthetic QA company and the two confirmed inboxes be
 - Held staff message/progress notifications: `kp-production-release/supabase/migrations/20261007220430_project_client_collaboration.sql`. Its notification status is constrained to `held`; the current source has no delivery worker.
 
 Audit date: October 13, 2026. This plan does not activate email delivery or send new messages.
+
+## Implementation and verification
+
+October 13: Solta backend suite passed 40 tests; KP notification database suite passed 23 isolated checks. Both production builds and scoped lint passed. New controls default disabled in both databases. No old held jobs are replayed.
+
+KP captures future authorized source events transactionally and leases delivery attempts. Solta freezes recipient records, rechecks active approver access, uses a stable provider idempotency key, and records provider acceptance. An uncertain delivery older than 23 hours requires manual provider reconciliation before another send.
+
+Retries run on subsequent project activity, an authorized staff project visit, or the admin Retry pending emails action. No periodic background retry schedule is configured. Provider acceptance is distinct from confirmed inbox arrival.
+
+Still to build: client alerts for staff messages, published progress, shared staff files and newly published previews. Current delivery covers incoming client activity and payment events only.

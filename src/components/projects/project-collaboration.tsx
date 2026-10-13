@@ -2,6 +2,7 @@ import Link from 'next/link';
 import {randomUUID} from 'node:crypto';
 import {ActionForm} from '@/components/action-form';
 import {ProgressEditor} from './progress-editor';
+import {ProjectEmails} from './project-emails';
 import {getProjectCollaboration} from '@/modules/project-collaboration/queries';
 import {addProjectFile,postProjectMessage,publishProjectProgress,setProjectFileAudience} from '@/modules/project-collaboration/actions';
 const box='mb-7 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5';
@@ -11,6 +12,7 @@ export async function ProjectCollaboration({id,business}:{id:string;business:str
  const data=await getProjectCollaboration(id);
  function context(){return <><input type="hidden" name="id" value={id}/><input type="hidden" name="business" value={business}/></>;}
  return <>
+ {business==='solta'?<ProjectEmails projectId={id}/>:null}
  <section className={box}><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-medium">Client progress</h2><Link href={`/client-preview/${business}/projects/${id}`} className="text-sm underline">Preview client view</Link></div><p className="mt-2 text-sm text-[var(--muted)]">Save privately, then publish when ready. Project stage changes never publish an update.</p><ProgressEditor key={data.draft?.revision||0} id={id} business={business} draft={data.draft}/>{data.draft?<ActionForm action={publishProjectProgress} className="mt-4">{context()}<input type="hidden" name="revision" value={data.draft.revision}/><button type="submit" disabled={!data.draft.current_work.trim()||data.published?.draft_revision===data.draft.revision} className={`${button} disabled:opacity-40`}>Publish saved progress</button></ActionForm>:null}<p className="mt-3 text-sm text-[var(--muted)]">{data.published?'A published update is available in the client preview.':'Nothing published yet.'}</p></section>
  <section className={box}><h2 className="font-medium">Files & versions</h2><p className="mt-2 text-sm text-[var(--muted)]">Uploads are private. Each new version is retained. Share a ready file explicitly to include it in the client view. Drive links keep their existing Drive permissions.</p>
  <ActionForm action={addProjectFile} key={`upload-${data.files.length}`} className="mt-4 grid gap-3">{context()}<input type="hidden" name="request_id" value={randomUUID()}/><input type="hidden" name="source" value="upload"/><label className="grid gap-2 text-sm">Upload file · up to 20 MB<input required type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.txt,.csv" className={field}/></label><label className="grid gap-2 text-sm">File version<select name="series_id" className={field}><option value="">New file</option>{data.files.filter((f,i,all)=>all.findIndex(item=>item.series_id===f.series_id)===i).map(f=><option key={f.series_id} value={f.series_id}>New version of {f.name}</option>)}</select></label><button type="submit" className={button}>Upload private file</button></ActionForm>

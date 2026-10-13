@@ -1,4 +1,6 @@
 "use server";
+import {after} from 'next/server';
+import {tryProjectEmails} from '@/modules/integrations/solta/notifications/dispatch';
 import {revalidatePath} from "next/cache";
 import {z} from "zod";
 import {requireActiveIdentity,requireAdminIdentity} from "@/lib/auth/current-user";
@@ -90,5 +92,6 @@ export async function publishScope(data:FormData){
  const {data:version,error:lookupError}=await db.from('project_scope_versions').select('id').eq('id',scope).eq('project_id',project).maybeSingle();
  if(lookupError)throw new Error(lookupError.message);if(!version)throw new Error('Scope unavailable.');
  const {error}=await db.rpc('kp_publish_solta_scope',{p_scope:scope});if(error)throw new Error(error.message);
+ after(()=>tryProjectEmails(project));
  refresh('solta',project);
 }

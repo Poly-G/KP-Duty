@@ -8,7 +8,7 @@ Saving a revision immediately invalidates prior approval for readiness and offic
 
 Portal approval satisfies the existing current-scope readiness and $799 office payment gate. It does not charge a card, start delivery, advance production or launch a website. Staff can still record actual approval received outside the portal. Those private evidence fields remain private.
 
-Sharing a scope currently makes it available in the portal only; it does not send a scope email. The existing project email work covers other event types and is preserved.
+When project client-update emails are enabled, sharing a new current scope version queues a branded review email for the active company approver. Private drafts, duplicate sharing and superseded queued versions do not notify. See solta-scope-review-email.md for the delivery and rollout rules.
 
 Verification: 41 isolated database checks, 52 KP unit tests, 42 frontend tests, and 28 phone/desktop interface checks. QA browser submissions were mocked locally, with no real agreement or payment. Production builds and scoped lint checks must pass before rollout.
 

@@ -3,6 +3,7 @@ import {z} from 'zod';
 export const notificationPath='/api/integrations/kp/notifications';
 const base=z.object({version:z.literal(1),business:z.literal('solta'),eventId:z.uuid(),sourceId:z.uuid(),projectId:z.uuid(),organizationId:z.uuid(),portalProjectId:z.uuid(),projectName:z.string().min(1).max(300),companyName:z.string().min(1).max(300),createdAt:z.iso.datetime()});
 export const notificationEvent=z.discriminatedUnion('kind',[
+ base.extend({kind:z.literal('scope.published'),versionNumber:z.number().int().positive()}).strict(),
  base.extend({kind:z.literal('message.shared')}).strict(),
  base.extend({kind:z.literal('progress.published')}).strict(),
  base.extend({kind:z.literal('file.shared'),label:z.string().min(1).max(200),versionNumber:z.number().int().positive()}).strict(),
@@ -12,7 +13,7 @@ export const notificationEvent=z.discriminatedUnion('kind',[
  base.extend({kind:z.literal('review.decided'),actorName:z.string().min(1).max(100),outcome:z.enum(['approved','changes_requested']),versionNumber:z.number().int().positive(),label:z.string().min(1).max(200)}).strict(),
  base.extend({kind:z.enum(['payment.requested','payment.received']),label:z.string().min(1).max(200),amount:z.number().int().min(50).max(99999999),livemode:z.boolean()}).strict(),
 ]);
-export const clientNotificationKinds=['message.shared','progress.published','file.shared','preview.published'] as const;
+export const clientNotificationKinds=['message.shared','progress.published','file.shared','preview.published','scope.published'] as const;
 export function isClientNotification(event:{kind:string}){return (clientNotificationKinds as readonly string[]).includes(event.kind);}
 export type NotificationEvent=z.infer<typeof notificationEvent>;
 export class NotificationError extends Error{constructor(public status:number,message:string){super(message);}}

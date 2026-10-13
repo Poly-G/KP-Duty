@@ -27,7 +27,7 @@ export async function dispatchProjectEmails(projectId:string,retry=false){
    await db.from('solta_notification_events').update({status:'pending',lease_id:null,lease_until:null,error_code:errorCode,next_attempt_at:new Date(Date.now()+300000).toISOString()}).eq('id',row.id).eq('lease_id',lease);
   }
  }
- const remaining=await db.from('solta_notification_events').select('id',{head:true,count:'exact'}).eq('project_id',projectId).neq('status','sent');
+ const remaining=await db.from('solta_notification_events').select('id',{head:true,count:'exact'}).eq('project_id',projectId).in('status',['pending','sending']);
  return {sent,pending:pending||!!remaining.count||!!remaining.error};
 }
 export async function tryProjectEmails(projectId:string){try{await dispatchProjectEmails(projectId);}catch{console.error('Project email dispatch pending','UNAVAILABLE');}}

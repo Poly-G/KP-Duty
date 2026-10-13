@@ -12,8 +12,8 @@ Sign-in and welcome emails are working. Public website deposits notify Solta. Pr
 | Public standard website deposit paid | Verifies Stripe's event and sends an internal deposit email. | Sandbox email verified; live signed delivery awaits a genuine payment. |
 | Client posts a message | Saves the message in KP and displays it for staff. | Verified delivered for the QA project in Resend (October 13). |
 | Client uploads a file | Verifies the stored file and makes it available to authorized clients/staff. | Verified delivered for the QA project in Resend (October 13). |
-| Staff posts a client message or publishes progress | Publishes the client-visible record and creates a held notification job. | Held jobs have no delivery worker; they are not sent. |
-| Staff shares a file or publishes a working preview | Makes the published file/version available in the portal. | No operational email is sent. |
+| Staff posts a client message or publishes progress | Publishes the client-visible record and creates a held notification job. | Future scoped publications send the new client alerts; old held jobs remain untouched. |
+| Staff shares a file or publishes a working preview | Makes the published file/version available in the portal. | The new file/preview alerts are verified delivered for the QA project. |
 | Client approves or requests changes | Saves the decision for the exact version and displays it in KP. | Verified delivered for the QA project in Resend (October 13). |
 | KP publishes a portal payment request | Makes the fixed-amount request available in Payments. | Verified delivered for the QA project in Resend (October 13). |
 | A portal payment succeeds | Records the verified payment, synchronizes it to KP and provides the Stripe receipt link. | Verified delivered after the signed Sandbox payment synchronized to KP. |
@@ -59,7 +59,7 @@ KP captures future authorized source events transactionally and leases delivery 
 
 Retries run on subsequent project activity, an authorized staff project visit, or the admin Retry pending emails action. No periodic background retry schedule is configured. Provider acceptance is distinct from confirmed inbox arrival.
 
-Still to build: client alerts for staff messages, published progress, shared staff files and newly published previews. Current delivery covers incoming client activity and payment events only.
+Client alerts for staff messages, published progress, shared staff files and newly published previews are implemented and verified for the sample project. Real-client alerts remain disabled by the project allowlist.
 
 ## Hosted QA delivery results
 
@@ -71,12 +71,25 @@ Verified delivered to contact@soltaworks.com: synthetic client message; verified
 
 Sandbox Checkout completed October 13 at 11:40 AM Pacific using Stripe’s standard fake card. Both ledgers record $5.00 and livemode=false; KP captured payment.received and acknowledged notification delivery. Resend reports the payment confirmation delivered to contact@soltaworks.com (provider id 01a13690-a6bc-707d-8060-a1f59c590563). The internal inbox and active approver are the same address, so one recipient email is intentional. All five queue events and all five delivery records are sent; a final retry created no additional delivery. No real-client alerts are enabled and no real money was charged.
 
-## Client update implementation — awaiting release approval
+## Client update implementation and hosted QA
 
 New event kinds: `message.shared`, `progress.published`, `file.shared`, `preview.published`. Staff messages, published progress and ready shared files notify all active company members; a newly published preview notifies the active approver only. Each email links to the authenticated project; no message body, draft content, file attachment or private Drive URL is sent. Preview/file emails identify the recorded version.
 
 Both hosted databases have the `client_updates_enabled` control, default false. Existing incoming-activity/payment alerts remain scoped to the QA project. The new source triggers do not backfill held jobs or existing publications. The queue claim and receiver both respect the new control. Revoked memberships are skipped before a retry sends.
 
-Verification: 44 Solta backend tests, 30 KP notification database checks, scoped lint and both local production builds passed. Solta commit `2a914ad070e88b823b19fba89c749c3521eae8c4`; KP final release commit `2475f27ab17c634b049c3911d07211621f043350` (includes `b840ba2`). Solta Vercel preview `CLesTtt1iJP8RxFVh8s5ARVvHm53` is Ready. Hosted QA deliveries for the four new event kinds are pending production release approval. Automatic approval review rejected preparing the production rollout because it requires approval for these new commits.
+Verification: 44 Solta backend tests, 30 KP notification database checks, scoped lint and both local production builds passed. Solta commit `2a914ad070e88b823b19fba89c749c3521eae8c4`; KP final release commit `2475f27ab17c634b049c3911d07211621f043350` (includes `b840ba2`). Solta Vercel preview `CLesTtt1iJP8RxFVh8s5ARVvHm53` is Ready. The owner approved both exact commits. Hosted QA delivery is now verified for all four event kinds; the earlier approval block is resolved.
 
 Authorized staff visits now drain the scoped queue even when the viewer is not an admin; delivery controls remain admin-only. The final KP build and lint passed after this fix.
+
+## Client update hosted results — October 13
+
+Production deployments: Solta `DixAXq3cB5TH1K1FYEYtVrfoZZAU` from `2a914ad`; KP `DXofcf5UgmWzZjmX96hhvRDdgFbG` from `2475f27`. Both applications have client updates enabled only on the existing sample project allowlist; allow_all_projects remains false. No payment or launch was created.
+
+- `message.shared`: sent once to contact@soltaworks.com and soltafilms@gmail.com; event c72f45c7-ecb4-4c89-93b3-6addda43fda1.
+- `progress.published`: sent once to both QA members; event c04c0c8b-de21-4e9a-8631-ead96f7e328b.
+- `file.shared`: sent once to both QA members after staff explicitly shared solta-staff-shared-qa.txt, version 1; event b10bc3db-c525-4f07-be92-d00907a0e44f. The private upload alone created no file alert.
+- `preview.published`: sent once only to the approver, contact@soltaworks.com, for website version 4; event 1576fe2f-22a8-4b18-b847-65813b22d57b. Resend provider id 01a136ae-67c3-7435-9e9a-a9a8f7dc1af0.
+
+Resend reports all seven recipient emails delivered. KP acknowledges all four queue events as sent, one attempt each; Solta stores seven sent recipient records for these four IDs. A final Retry pending emails left these counts unchanged. An internal-only note and unpublished progress draft produced zero new email events. The branded preview email identifies version 4 and its button opens the normal authenticated project URL; an expired session correctly reaches sign-in.
+
+Staff saves briefly showed stale-page errors around the release. After refreshing the released page, file sharing and internal review succeeded. Billing refresh also recovered and showed both existing Sandbox payments. No permission bypass or corrective production data write was used.

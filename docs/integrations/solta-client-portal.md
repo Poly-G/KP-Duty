@@ -1,0 +1,39 @@
+# Solta client portal collaboration bridge
+
+The customer app lives in Poly-G/mettlesite. Customers have separate invited accounts and company memberships; they do not become KP staff. KP remains the source of project delivery records and private files.
+
+## Implementation and rollout
+
+The dedicated POST `/api/integrations/solta/portal` receiver is closed unless `SOLTA_PORTAL_RECEIVER_ENABLED=true`, a shared secret of at least 32 characters is present, and the server-only integration database credential is configured. Normal KP staff authentication remains in place on other routes.
+
+Before enabling a pilot:
+
+1. Review and apply `20261010030032_solta_client_read_boundary.sql`, then `20261010162451_solta_client_collaboration.sql` to the intended KP database.
+2. Create company and project authorization links in Solta. Verify the KP UUIDs.
+3. As a KP admin, call `kp_link_solta_portal(p_project, p_company, p_portal_project)` with those exact IDs. The mapping is immutable; enable/disable it through the admin-controlled `enabled` field.
+4. Configure KP's server-only `KP_INTEGRATION_SUPABASE_SECRET`, `SOLTA_PORTAL_SHARED_SECRET`, and enable flag. Configure Solta's `KP_PORTAL_API_URL` to this HTTPS endpoint and matching dedicated `KP_PORTAL_SHARED_SECRET`. The database credential stays in KP.
+5. Pilot synthetic companies and verify publication, foreign-company denial, revoked membership, disabled links, signature expiry and replay denial in the deployed environment.
+
+Hosted rollout update, October 10, 2026: both migrations were applied with user approval to KP project `yurkyxjhxvtivdrbcjuc` and recorded in migration history. Verification confirmed six RLS-protected tables, narrow service-role RPC permission, blocked direct anonymous/customer RPC access and private Storage. Only the approved synthetic project mapping is enabled; the receiver flag is scoped to Preview branch build/solta-client-bridge. User rotation of all four shared-secret entries resolved SIGNATURE_MISMATCH. Rebuilt KP Preview dpl_6QhQbLZ89QoT2DWdoSkhZM9EL52H (af3ab36) and Solta Preview dpl_Dqa64sJJdQEzG2QGhPDXD5hYEquh (ca9d02a) are Ready. Sixteen hosted checks passed: signed reads; message creation, idempotent retry and persistence; real private Storage upload, verification and matching download; changes-request decision and persistence; and rejection of foreign origins, unknown projects, unconfirmed approvals, missing sessions and incorrect versions. The temporary QA session is expired, with zero active QA sessions. No email or charge occurred. Subsequent user-approved version-2 approval and access-boundary results are recorded below. No Production deployment was performed.
+
+## Publication boundary
+
+Follow-up after explicit user approval: synthetic website version 2 (`3e7360e0-762a-4708-aa53-d6ed8c184a48`) was internally reviewed and published through the normal KP admin RPCs. Hosted confirmed approval, idempotent retry and persisted approved status passed; superseded-version approval, ordinary-member approval, revoked membership and disabled mapping were denied. The QA role, membership and mapping were restored; all temporary sessions are expired. Hosted service-role SQL verified foreign-company denial and duplicate nonce rejection. Direct HTTP signature-replay remains unperformed; local transport tests are separate evidence.
+
+Requests carry exact KP project/company IDs, the immutable Solta project-link ID, client actor ID, timestamp, UUID nonce and HMAC signature. KP independently checks the mapping, active Solta business and unarchived company/project. A unique receipt rejects nonce reuse. Receipts contain actor identifiers and timestamps, not message/file content; define an operational retention period before sustained traffic.
+
+Only the latest explicitly published progress, client messages and ready client-shared file descriptors are returned. Internal notes, draft progress, staff IDs, evidence, storage paths and raw storage URLs are excluded. KP staff can publish an immutable working-preview URL for the current published version. Client messages, ready uploads and version-specific decisions are KP-owned records with external actor attribution. Customers are not staff profiles. Payment writes remain outside this bridge; Solta’s payment outbox remains held.
+
+Disable the receiver flag or a project mapping to close access. Do not replace this boundary with client access to KP's privileged database key.
+
+## Verification
+
+`node --test tests/solta-receiver.test.mjs` checks the signed transport and bounded strict input. `node tests/database/solta-client-read.mjs` replays the actual migration in isolated PostgreSQL-compatible PGlite and checks admin-only linking, independent matching, private field exclusion, replay protection, disabled links and role permissions. Hosted RLS/advisor and end-to-end service checks remain rollout work.
+
+## Collaboration operations
+
+The strict signed contract supports project.read, message.create, file.reserve, file.inspect, file.complete, file.download and review.decide. Solta derives actor identity and current member/approver role from its database; KP independently checks the exact company/project/portal mapping and consumes a unique nonce. Request UUIDs make message/upload/decision retries durable. Version-specific decisions reject stale versions and staff review overwrites. Approval does not launch or activate delivery.
+
+The browser uploads directly to a scoped signed URL with no upsert. KP verifies stored size, format and SHA-256 before marking the file ready. The private bucket accepts PDF, PNG, JPEG, HEIC/HEIF, DOCX, UTF-8 text and CSV up to 20 MB; legacy DOC and SVG remain unsupported. Downloads require an authorized ready file and expire after 60 seconds. Upload tokens last up to two hours; current authorization is required again for completion. Define pending-object cleanup and nonce receipt retention before sustained traffic. File format checks are not malware scanning. Use an exact version deployment URL for previews; immutable URL publication cannot freeze external page contents.
+
+`node tests/database/solta-client-collaboration.mjs` checks the actual additive migration, publication/tenant restrictions, immutable decisions, retries and narrow role permissions. The cross-repository Solta `test:portal-kp` checks the real signed receiver and Solta sessions against isolated SQL databases and fixture Storage. Hosted database access, receiver reads, messages, private Storage and change requests passed the synthetic pilot; remaining hosted boundaries are listed above.

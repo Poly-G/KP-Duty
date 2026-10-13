@@ -1,6 +1,7 @@
 import {requireActiveIdentity} from '@/lib/auth/current-user';
 import {createClient} from '@/lib/supabase/server';
-import type {Deliverable, DeliverableVersion, Review} from './types';
+import {mergeVersionReviews} from './types';
+import type {Deliverable, DeliverableVersion, Review, PortalDecision} from './types';
 export async function getDeliverables(projectId: string): Promise<Deliverable[]> {
   await requireActiveIdentity();
   const db = await createClient();
@@ -14,16 +15,19 @@ export async function getDeliverables(projectId: string): Promise<Deliverable[]>
   if (versionError) throw new Error(versionError.message);
   const versionIds = (versions || []).map(v => v.id);
   if (!versionIds.length) return (data as unknown as Omit<Deliverable,'versions'>[]).map(d=>({...d,versions:[]}));
-  const [files,reviews,publications] = await Promise.all([
+  const [files,reviews,publications,portalDecisions,previews] = await Promise.all([
     db.from('deliverable_version_files').select('version_id,file_id').in('version_id',versionIds),
     db.from('deliverable_reviews').select('*,actor:profiles!recorded_by(display_name)').in('version_id',versionIds).order('recorded_at'),
     db.from('deliverable_publications').select('id,published_at').in('id',versionIds),
+    db.from('solta_portal_decisions').select('id,version_id,actor_id,actor_name,outcome,note,created_at').in('version_id',versionIds),
+    db.from('solta_portal_previews').select('version_id,preview_url').in('version_id',versionIds),
   ]);
-  for (const result of [files,reviews,publications]) if(result.error) throw new Error(result.error.message);
+  for (const result of [files,reviews,publications,portalDecisions,previews]) if(result.error) throw new Error(result.error.message);
   return (data as unknown as Omit<Deliverable,'versions'>[]).map(d=>({...d,versions:(versions || []).filter(v=>v.deliverable_id===d.id).map(v=>({
     ...v,file_ids:(files.data || []).filter(f=>f.version_id===v.id).map(f=>f.file_id),
     published_at:publications.data?.find(p=>p.id===v.id)?.published_at || null,
-    reviews:(reviews.data || []).filter(r=>r.version_id===v.id) as unknown as Review[],
+    preview_url:previews.data?.find(p=>p.version_id===v.id)?.preview_url||null,
+    reviews:mergeVersionReviews(v.id,(reviews.data||[]) as unknown as Review[],(portalDecisions.data||[]) as PortalDecision[]),
   })) as DeliverableVersion[]}));
 }
 export async function getDeliverableReviewers() {

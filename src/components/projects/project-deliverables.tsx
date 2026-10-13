@@ -11,7 +11,7 @@ export async function ProjectDeliverables({id,business,ownerId,requirements}:{id
   const [deliverables,reviewers,collaboration,{profile}]=await Promise.all([
     getDeliverables(id),getDeliverableReviewers(),getProjectCollaboration(id),requireActiveIdentity(),
   ]);
-  const availableFiles=collaboration.files.filter(f=>f.state==='ready'&&!f.drive_url);
+  const availableFiles=collaboration.files.filter(f=>f.state==='ready'&&!f.drive_url&&!f.portal_upload);
   function context(){return <><input type="hidden" name="project_id" value={id}/><input type="hidden" name="business" value={business}/></>;}
   return <section className="mb-7 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
     <h2 className="text-xl font-medium">Deliverables & approvals</h2>
@@ -46,11 +46,15 @@ export async function ProjectDeliverables({id,business,ownerId,requirements}:{id
           <button type="submit" className={button}>Record internal review of version {current.version}</button>
         </ActionForm>:null}
         {current&&!current.published_at?<ActionForm action={publishDeliverable} className="mt-4" errorMessage="Couldn’t publish this version. It needs internal approval and must still be the current version.">
-          {context()}<input type="hidden" name="version_id" value={current.id}/><button type="submit" disabled={internal?.outcome!=='approved'} className={button}>Publish version {current.version} and share its attached files</button>
+          {context()}<input type="hidden" name="version_id" value={current.id}/>{business==='solta'?<label className="mb-3 grid gap-2 text-sm">Working preview URL · optional<input type="url" name="preview_url" maxLength={2000} placeholder="https://" className={field}/><span className="text-xs text-[var(--muted)]">Use a link the client can open. This link stays tied to this version; changes need a new version.</span></label>:null}<button type="submit" disabled={internal?.outcome!=='approved'} className={button}>Publish version {current.version} and share its attached files</button>
         </ActionForm>:null}
+        {business==='solta'&&current?.published_at&&!current.preview_url?<ActionForm action={publishDeliverable} key={`preview-${current.id}`} className="mt-4 grid gap-3" errorMessage="Couldn’t share the working preview. Use a client-accessible HTTPS link for the current version.">
+          {context()}<input type="hidden" name="version_id" value={current.id}/><label className="grid gap-2 text-sm">Working preview URL<input type="url" required name="preview_url" maxLength={2000} placeholder="https://" className={field}/></label><p className="text-xs text-[var(--muted)]">The client reviews this exact version. The link cannot be changed after sharing.</p><button className={button} type="submit">Share working preview for version {current.version}</button>
+        </ActionForm>:null}
+        {current?.preview_url?<p className="mt-3 text-sm"><a href={current.preview_url} target="_blank" rel="noopener noreferrer" className="underline">Open version {current.version} working preview</a></p>:null}
         {current?.published_at&&!client?<ActionForm action={reviewDeliverable} key={`client-${current.id}`} className="mt-5 grid gap-3" errorMessage="Couldn’t record this client response. Include the client’s name and evidence, and review the latest published version.">
           {context()}<input type="hidden" name="request_id" value={randomUUID()}/><input type="hidden" name="version_id" value={current.id}/><input type="hidden" name="lane" value="client_record"/>
-          <h4 className="text-sm font-medium">Record client response from email or a meeting</h4><p className="text-xs text-[var(--muted)]">Record an actual response with its evidence. Direct client review in the portal will come with client login later.</p>
+          <h4 className="text-sm font-medium">Record client response from email or a meeting</h4><p className="text-xs text-[var(--muted)]">Record an actual response received outside the portal. Responses submitted through the client portal appear here automatically.</p>
           <label className="grid gap-2 text-sm">Client name<input required name="client_name" maxLength={200} className={field}/></label>
           <label className="grid gap-2 text-sm">Client outcome for {d.title} · Version {current.version}<select name="outcome" className={field}><option value="approved">Approved</option><option value="changes_requested">Changes requested</option></select></label>
           <label className="grid gap-2 text-sm">Client feedback · visible in portal<textarea required name="note" maxLength={5000} rows={2} className={field}/></label>
@@ -60,7 +64,7 @@ export async function ProjectDeliverables({id,business,ownerId,requirements}:{id
         <details className="mt-5"><summary className="cursor-pointer text-sm">Versions & review history</summary><div className="mt-3 space-y-4">{d.versions.map(v=><section key={v.id} className="rounded-lg bg-[var(--surface-subtle)] p-3">
           <h4 className="text-sm font-medium">Version {v.version} · {v.published_at?'Published':'Internal only'}</h4><p className="mt-2 whitespace-pre-wrap text-sm">{v.description}</p>
           <ul className="mt-2 space-y-1 text-sm">{v.file_ids.map(fileId=>{const file=collaboration.files.find(f=>f.id===fileId);return <li key={fileId}>{file?<a href={`/api/v1/project-files/${file.id}`} className="underline">{file.name} · File version {file.version}</a>:<span>Retained file reference: {fileId}</span>}</li>;})}</ul>
-          {v.reviews.map(r=><div key={r.id} className="mt-3 border-t border-[var(--border)] pt-3 text-sm"><p>{r.lane==='internal'?'Internal review':'Client response recorded'}: {r.outcome==='approved'?'Approved':'Changes requested'} · {r.actor?.display_name||'Team member'} · {new Date(r.recorded_at).toLocaleDateString('en-US',{timeZone:'UTC'})}</p><p className="mt-1 whitespace-pre-wrap">{r.note}</p>{r.lane==='client_record'?<><p className="mt-1">Client: {r.client_name}</p><p className="mt-1 whitespace-pre-wrap">Evidence: {r.evidence}</p></>:null}</div>)}
+          {v.reviews.map(r=><div key={r.id} className="mt-3 border-t border-[var(--border)] pt-3 text-sm"><p>{r.lane==='internal'?'Internal review':r.source==='portal'?'Client portal response':'Client response recorded'}: {r.outcome==='approved'?'Approved':'Changes requested'} · {r.actor?.display_name||'Team member'} · {new Date(r.recorded_at).toLocaleDateString('en-US',{timeZone:'UTC'})}</p><p className="mt-1 whitespace-pre-wrap">{r.note}</p>{r.lane==='client_record'?<><p className="mt-1">Client: {r.client_name}</p><p className="mt-1 whitespace-pre-wrap">Evidence: {r.evidence}</p></>:null}</div>)}
         </section>)}</div></details>
       </article>;
     })}</div>

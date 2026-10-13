@@ -1,5 +1,7 @@
 import {ProjectRequestPolicy} from '@/components/projects/project-request-policy';
 import {ProductionControls} from "@/components/projects/production-controls";
+import {SoltaClientPortal} from '@/components/projects/solta-client-portal';
+import {Suspense} from 'react';
 import {ProjectScope} from "@/components/projects/project-scope";
 import {OnboardingEditor} from "@/components/projects/onboarding-editor";
 import Link from "next/link";
@@ -10,6 +12,7 @@ import {notFound} from "next/navigation";
 import {PageHeading} from "@/components/page-heading";
 import {ActionForm} from "@/components/action-form";
 import {BillingPlaceholder} from "@/components/projects/billing-placeholder";
+import {SoltaBilling} from '@/components/projects/solta-billing';
 import {requireActiveIdentity} from "@/lib/auth/current-user";
 import {getDelivery} from "@/modules/delivery/queries";
 import {saveClientDelivery} from "@/modules/delivery/actions";
@@ -25,6 +28,7 @@ export default async function DeliveryPage({params}:{params:Promise<{business:st
  return <>
   <Link href={`/businesses/${business}/clients/${project.organization.id}`} className="mb-5 inline-block text-sm text-[var(--muted)]">← {project.organization.name}</Link>
   <PageHeading eyebrow={`${project.business.name} · ${serviceTemplates[e.service].label}`} title={project.name} description={`Owner: ${project.owner.display_name || "Unassigned"}. ${e.started_at ? "Delivery start approved." : "Preparing for delivery."}`}/>
+  {business==='solta'&&admin?<Suspense fallback={<p role="status" className="mb-7 text-sm text-[var(--muted)]">Loading client portal access…</p>}><SoltaClientPortal projectId={id} companyName={project.organization.name}/></Suspense>:null}
   <section className="mb-7 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
    <h2 className="font-medium">Onboarding</h2><p className="mt-2 text-sm text-[var(--muted)]">Staff preparation · template v{e.template_version}. Client login and submission will be added later. Do not enter passwords or access tokens here.</p>
    <OnboardingEditor key={e.revision} engagement={e} business={business} companyName={project.organization.name}/>
@@ -40,6 +44,6 @@ export default async function DeliveryPage({params}:{params:Promise<{business:st
   </ActionForm>
   {issues.length?<ul className="mt-5 list-disc space-y-2 pl-5 text-sm text-[var(--muted)]">{issues.map(issue=><li key={issue}>{issue}</li>)}</ul>:<p className="mt-5 text-sm">Readiness checks complete.</p>}
   {e.started_at?<p className="mt-4 text-sm">Start approval recorded {new Date(e.started_at).toLocaleDateString("en-US",{timeZone:"UTC"})}.</p>:admin?<ActionForm key={`start-${e.revision}`} action={saveClientDelivery} className="mt-5">{hidden("start")}<button disabled={issues.length>0} type="submit" className="rounded-lg bg-[var(--text)] px-4 py-2 text-sm text-white disabled:opacity-40">Approve and start delivery</button></ActionForm>:null}
-  </section><ProductionControls id={id} business={business} admin={admin} service={e.service}/><ProjectCollaboration id={id} business={business}/><ProjectDeliverables id={id} business={business} ownerId={project.owner.id} requirements={fields}/><BillingPlaceholder/>
+  </section><ProductionControls id={id} business={business} admin={admin} service={e.service}/><ProjectCollaboration id={id} business={business}/><ProjectDeliverables id={id} business={business} ownerId={project.owner.id} requirements={fields}/>{business==='solta'?admin?<Suspense fallback={<p role="status" className="mt-7 text-sm">Loading client payments…</p>}><SoltaBilling projectId={id}/></Suspense>:<p className="mt-7 text-sm">An administrator manages client payments.</p>:<BillingPlaceholder/>}
  </>;
 }

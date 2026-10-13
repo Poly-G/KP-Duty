@@ -12,7 +12,7 @@ export const onboardingRequest=z.union([
 ]);
 export type OnboardingRequest=z.infer<typeof onboardingRequest>;
 export type SetupPeople=z.infer<typeof setupPeople>;
-export const onboardingStatus=z.object({ready:z.boolean(),members:z.array(z.object({name:z.string().nullable(),email:z.email(),role:z.enum(['member','approver'])})),portalProjectId:z.uuid().nullable(),jobId:z.uuid().nullable(),welcomeAccepted:z.array(z.email()),inviteEmails:z.array(z.email()).default([])});
+export const onboardingStatus=z.object({projectEmailsReady:z.boolean().default(false),ready:z.boolean(),members:z.array(z.object({name:z.string().nullable(),email:z.email(),role:z.enum(['member','approver'])})),portalProjectId:z.uuid().nullable(),jobId:z.uuid().nullable(),welcomeAccepted:z.array(z.email()),inviteEmails:z.array(z.email()).default([])});
 export type OnboardingStatus=z.infer<typeof onboardingStatus>;
 export class OnboardingError extends Error{status:number;constructor(status:number,message:string){super(message);this.status=status;}}
 export function onboardingSignature(secret:string,timestamp:string,nonce:string,raw:string){

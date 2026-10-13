@@ -7,15 +7,20 @@ import {getDelivery} from '@/modules/delivery/queries';
 import {OnboardingError,setupPeople,onboardingStatus,type OnboardingStatus} from './contract';
 import {soltaSetupRequest} from './client';
 import {runClientSetup} from './workflow';
+import {sendSetupWelcomes} from './welcome-workflow';
 async function context(projectId:string){
  const {user,profile}=await requireAdminIdentity();if(!z.uuid().safeParse(projectId).success)throw new OnboardingError(400,'Project not found.');
  const delivery=await getDelivery(projectId,'solta');if(!delivery)throw new OnboardingError(404,'Solta client project not found.');
  return {version:1 as const,business:'solta' as const,actorId:user.id,actorName:(profile.display_name||'KP administrator').slice(0,100),projectId,organizationId:delivery.project.organization.id,companyName:delivery.project.organization.name,projectName:delivery.project.name};
 }
+async function kpProjectEmailsReady(projectId:string){
+ const db=await createClient();const {data,error}=await db.from('solta_notification_control').select('enabled,client_updates_enabled,allow_all_projects,allowed_projects').eq('id','solta').maybeSingle();
+ return !error&&!!data?.enabled&&data.client_updates_enabled&&(data.allow_all_projects||(Array.isArray(data.allowed_projects)&&data.allowed_projects.includes(projectId)));
+}
 function friendly(error:unknown){if(error instanceof OnboardingError)return error.message;if(error instanceof z.ZodError)return 'Check the names, email addresses, and company access confirmation.';console.error('Solta client setup action failed','UNAVAILABLE');return 'Setup was interrupted. Retry the same setup; access will only open after every step succeeds.';}
 export async function getClientPortalStatus(projectId:string):Promise<{available:boolean;status:OnboardingStatus|null;error?:string}>{
  const source=await context(projectId);
- try{return {available:true,status:onboardingStatus.parse(await soltaSetupRequest({...source,operation:'status'}))};}catch(error){return {available:false,status:null,error:friendly(error)};}
+ try{const status=onboardingStatus.parse(await soltaSetupRequest({...source,operation:'status'}));status.projectEmailsReady=status.projectEmailsReady&&await kpProjectEmailsReady(projectId);return {available:true,status};}catch(error){return {available:false,status:null,error:friendly(error)};}
 }
 export async function setupClientPortal(data:FormData){
  const source=await context(String(data.get('project_id')||''));
@@ -26,8 +31,9 @@ export async function setupClientPortal(data:FormData){
   const people=setupPeople.parse({approver:{name:data.get('approver_name'),email:data.get('approver_email')},members,replaceApprover:data.get('replace_approver')==='on',confirmedCompanyAccess:data.get('company_access_confirmed')==='on'});
   const db=await createClient();
   const rpc=async(name:'kp_prepare_solta_client_setup'|'kp_advance_solta_client_setup',args:Record<string,unknown>)=>{const {data,error}=await db.rpc(name,args);if(error){if(error.code==='P0001')throw new OnboardingError(409,error.message);throw new OnboardingError(503,'KP client setup is not ready yet.');}return data;};
-  await runClientSetup(source,requestId,people,{prepare:async()=>{const result=await rpc('kp_prepare_solta_client_setup',{p_id:requestId,p_project:source.projectId,p_people:people});return z.object({portalProjectId:z.uuid(),projectId:z.uuid(),organizationId:z.uuid()}).parse(result);},link:async id=>{await rpc('kp_advance_solta_client_setup',{p_id:requestId,p_portal_project:id,p_complete:false});},complete:async id=>{await rpc('kp_advance_solta_client_setup',{p_id:requestId,p_portal_project:id,p_complete:true});},remote:soltaSetupRequest});
-  revalidatePath(`/businesses/solta/projects/${source.projectId}`);return {ok:true as const};
+  const ready=await runClientSetup(source,requestId,people,{prepare:async()=>{const result=await rpc('kp_prepare_solta_client_setup',{p_id:requestId,p_project:source.projectId,p_people:people});return z.object({portalProjectId:z.uuid(),projectId:z.uuid(),organizationId:z.uuid()}).parse(result);},link:async id=>{await rpc('kp_advance_solta_client_setup',{p_id:requestId,p_portal_project:id,p_complete:false});},complete:async id=>{await rpc('kp_advance_solta_client_setup',{p_id:requestId,p_portal_project:id,p_complete:true});},remote:soltaSetupRequest});
+  const welcomePending=data.get('send_welcome')==='on'?await sendSetupWelcomes(ready,async email=>{const result=await soltaSetupRequest({...source,operation:'invite',requestId,portalProjectId:ready.portalProjectId!,email});if(result.accepted!==true)throw new Error('Welcome pending');}):[];
+  revalidatePath(`/businesses/solta/projects/${source.projectId}`);return {ok:true as const,welcomePending,projectEmailsReady:ready.projectEmailsReady&&await kpProjectEmailsReady(source.projectId)};
  }catch(error){return {ok:false as const,error:friendly(error)};}
 }
 export async function sendClientWelcome(data:FormData){

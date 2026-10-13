@@ -8,6 +8,6 @@ export async function runClientSetup(context:Context,requestId:string,people:Set
  if(!staged?.prepared||staged.portalProjectId!==portalProjectId)throw new Error('Setup preparation failed');
  await steps.link(portalProjectId);
  const ready=onboardingStatus.parse(await steps.remote({...context,operation:'commit',requestId,portalProjectId}));
- if(!ready.ready||ready.portalProjectId!==portalProjectId)throw new Error('Client access is not ready');
+ if(!ready.ready||ready.portalProjectId!==portalProjectId||ready.jobId!==requestId)throw new Error('Client access is not ready');
  await steps.complete(portalProjectId);return ready;
 }

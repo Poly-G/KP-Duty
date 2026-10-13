@@ -81,3 +81,14 @@ export async function advanceProduction(data:FormData){
  const {error}=await db.rpc('kp_advance_production',{p_id:uuid.parse(data.get('request_id')),p_project:project,p_stage:stage,p_context:z.string().regex(/^[a-f0-9]{32}$/).parse(data.get('context')),p_evidence:z.string().trim().min(5).max(10000).parse(data.get('evidence'))});
  if(error)throw new Error(error.message);refresh(business,project);
 }
+
+export async function publishScope(data:FormData){
+ await requireAdminIdentity();const db=await createClient();
+ const project=uuid.parse(data.get('project_id'));
+ if(data.get('ready')!=='on'||!await getDelivery(project,'solta'))throw new Error('Confirm this scope is ready for client review.');
+ const scope=uuid.parse(data.get('scope_id'));
+ const {data:version,error:lookupError}=await db.from('project_scope_versions').select('id').eq('id',scope).eq('project_id',project).maybeSingle();
+ if(lookupError)throw new Error(lookupError.message);if(!version)throw new Error('Scope unavailable.');
+ const {error}=await db.rpc('kp_publish_solta_scope',{p_scope:scope});if(error)throw new Error(error.message);
+ refresh('solta',project);
+}

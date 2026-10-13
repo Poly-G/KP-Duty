@@ -7,6 +7,7 @@ export const portalRequest=z.union([readRequest,
  base.extend({operation:z.literal('message.create'),payload:z.object({requestId:z.uuid(),body:z.string().trim().min(1).max(10000)}).strict()}).strict(),
  base.extend({operation:z.literal('file.reserve'),payload:z.object({requestId:z.uuid(),name:z.string().regex(/^[a-zA-Z0-9._-]{1,180}$/).refine(n=>n!=='.'&&n!=='..'),size:z.number().int().min(1).max(MAX_FILE_BYTES),mime:z.enum(PROJECT_FILE_MIME_TYPES),sha256:z.string().regex(/^[a-f0-9]{64}$/)}).strict()}).strict(),
  base.extend({operation:z.enum(['file.complete','file.download']),payload:z.object({fileId:z.uuid()}).strict()}).strict(),
+ base.extend({operation:z.literal('scope.decide'),payload:z.object({requestId:z.uuid(),scopeId:z.uuid(),version:z.number().int().positive(),outcome:z.enum(['approved','changes_requested']),note:z.string().trim().max(5000),confirmed:z.boolean()}).strict().refine(p=>p.outcome!=='changes_requested'||p.note.length>0)}).strict(),
  base.extend({operation:z.literal('review.decide'),payload:z.object({requestId:z.uuid(),reviewId:z.uuid(),version:z.number().int().positive(),outcome:z.enum(['approved','changes_requested']),note:z.string().trim().max(5000),confirmed:z.boolean()}).strict().refine(p=>p.outcome!=='changes_requested'||p.note.length>0)}).strict(),
 ]);
 export type ReadRequest=z.infer<typeof portalRequest>;

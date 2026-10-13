@@ -13,3 +13,11 @@ test('signed Solta reads are enabled explicitly, bounded, timestamped, strictly 
  for(const req of [request(JSON.stringify({...payload,business:'nex'})),request(JSON.stringify({...payload,staff:true})),request('x'.repeat(9000)),request(JSON.stringify(payload),String(Math.floor(now/1000)-301)),request(JSON.stringify(payload),undefined,'0'.repeat(64))])assert.ok([400,401,413].includes((await receiveSoltaRead(req,config,read,now)).status));
  assert.equal(calls,1);assert.equal((await receiveSoltaRead(request(),config,async()=>null,now)).status,404);assert.equal((await receiveSoltaRead(request(),config,async()=>{throw new Error('PRIVATE');},now)).status,503);
 });
+
+test('signed scope actions reject forged extra identity and invalid feedback before database operations',async()=>{
+ const action={...payload,operation:'scope.decide',actorName:'QA Approver',actorRole:'approver',payload:{requestId:randomUUID(),scopeId:randomUUID(),version:1,outcome:'approved',note:'',confirmed:true}};
+ let calls=0;const read=async()=>{calls++;return {id:action.payload.requestId};};
+ assert.equal((await receiveSoltaRead(request(JSON.stringify(action)),config,read,now)).status,200);
+ for(const invalid of [{...action,admin:true},{...action,payload:{...action.payload,actorRole:'approver'}},{...action,payload:{...action.payload,version:0}},{...action,payload:{...action.payload,outcome:'changes_requested',note:' '}}])assert.equal((await receiveSoltaRead(request(JSON.stringify(invalid)),config,read,now)).status,400);
+ assert.equal(calls,1);
+});

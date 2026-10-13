@@ -17,7 +17,13 @@ export async function getScopes(id:string){
  const ids=(versions||[]).map(v=>v.id);
  const {data:approvals,error:approvalError}=ids.length?await db.from("project_scope_approvals").select("*").in("scope_id",ids):{data:[],error:null};
  if(approvalError)throw new Error(approvalError.message);
- return {versions:(versions||[]) as import("./scopes").ScopeVersion[],approvals:(approvals||[]) as import("./scopes").ScopeApproval[]};
+ const [published,decisions]=await Promise.all([
+  db.from('solta_portal_scope_publications').select('scope_id,published_at').eq('project_id',id),
+  db.from('solta_portal_scope_decisions').select('id,scope_id,actor_name,outcome,note,created_at').eq('project_id',id).order('created_at',{ascending:false}),
+ ]);
+ if(published.error)throw new Error(published.error.message);if(decisions.error)throw new Error(decisions.error.message);
+ const portalApprovals=(decisions.data||[]).filter(d=>d.outcome==='approved').map(d=>({scope_id:d.scope_id,client_name:d.actor_name,client_email:'',evidence:'Approved this exact version in the client portal.',recorded_at:d.created_at}));
+ return {versions:(versions||[]) as import("./scopes").ScopeVersion[],approvals:[...(approvals||[]),...portalApprovals] as import("./scopes").ScopeApproval[],publications:published.data||[],decisions:decisions.data||[]};
 }
 
 export async function getProduction(id:string){

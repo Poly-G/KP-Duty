@@ -70,3 +70,13 @@ Scope: only KP project `b7ab0318-2cf8-4b47-977e-1b97e581e538`, portal project `3
 Verified delivered to contact@soltaworks.com: synthetic client message; verified `solta-notification-qa.txt`; changes request for website version 3; request for `[QA] Email-alert sandbox payment — no real money`. Message and request acknowledgement retries retained one provider email per event. Request `e8a47e4d-5d48-4041-9f29-1fb2d44d0643` is $5 in Stripe Sandbox (`livemode=false`). No real money test occurred.
 
 Sandbox Checkout completed October 13 at 11:40 AM Pacific using Stripe’s standard fake card. Both ledgers record $5.00 and livemode=false; KP captured payment.received and acknowledged notification delivery. Resend reports the payment confirmation delivered to contact@soltaworks.com (provider id 01a13690-a6bc-707d-8060-a1f59c590563). The internal inbox and active approver are the same address, so one recipient email is intentional. All five queue events and all five delivery records are sent; a final retry created no additional delivery. No real-client alerts are enabled and no real money was charged.
+
+## Client update implementation — awaiting release approval
+
+New event kinds: `message.shared`, `progress.published`, `file.shared`, `preview.published`. Staff messages, published progress and ready shared files notify all active company members; a newly published preview notifies the active approver only. Each email links to the authenticated project; no message body, draft content, file attachment or private Drive URL is sent. Preview/file emails identify the recorded version.
+
+Both hosted databases have the `client_updates_enabled` control, default false. Existing incoming-activity/payment alerts remain scoped to the QA project. The new source triggers do not backfill held jobs or existing publications. The queue claim and receiver both respect the new control. Revoked memberships are skipped before a retry sends.
+
+Verification: 44 Solta backend tests, 30 KP notification database checks, scoped lint and both local production builds passed. Solta commit `2a914ad070e88b823b19fba89c749c3521eae8c4`; KP final release commit `2475f27ab17c634b049c3911d07211621f043350` (includes `b840ba2`). Solta Vercel preview `CLesTtt1iJP8RxFVh8s5ARVvHm53` is Ready. Hosted QA deliveries for the four new event kinds are pending production release approval. Automatic approval review rejected preparing the production rollout because it requires approval for these new commits.
+
+Authorized staff visits now drain the scoped queue even when the viewer is not an admin; delivery controls remain admin-only. The final KP build and lint passed after this fix.

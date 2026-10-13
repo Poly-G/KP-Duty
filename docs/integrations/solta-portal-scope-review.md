@@ -11,3 +11,11 @@ Portal approval satisfies the existing current-scope readiness and $799 office p
 Sharing a scope currently makes it available in the portal only; it does not send a scope email. The existing project email work covers other event types and is preserved.
 
 Verification: 41 isolated database checks, 52 KP unit tests, 42 frontend tests, and 28 phone/desktop interface checks. QA browser submissions were mocked locally, with no real agreement or payment. Production builds and scoped lint checks must pass before rollout.
+
+## Hosted verification — October 13, 2026
+
+Backend e96a824 is live through production deployment 3VwKwoceFhBWuoVc7tXcyojTYtMm. The additive migration is installed; both new tables have RLS, anonymous operation access is denied, staff publication and service receiver grants were read back, and security advisors gained no new findings.
+
+On the existing synthetic First Client Website project, staff saved a non-binding $0 QA scope privately, then shared v1 through the normal staff control. The signed client portal displayed all four sections and omitted the internal revision reason. A member's approval option was disabled; empty feedback was rejected. A real QA feedback submission reached KP and the database with actor_role=member, scope_approved=false and started_at=null.
+
+Staff saved v2 privately. Clients continued to see v1 as reference with all decision controls removed. Explicitly sharing v2 reopened fresh review and did not carry over v1 feedback. The live 390-pixel view had no horizontal overflow. No real agreement was accepted and no payment was requested. Final-approver submission and approval/payment readiness were verified in isolated database and mocked browser tests.

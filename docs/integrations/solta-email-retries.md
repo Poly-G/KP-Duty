@@ -4,7 +4,7 @@ Pending email events are retried without a staff visit. Supabase Cron wakes the 
 
 The worker processes one due project (up to five events) per tick. A global five-minute lease and existing per-event leases prevent overlapping work. Due-project selection respects active Solta mappings, company/project archives, the email project allowlist, the client-update switch, and current scope publication. Existing Resend idempotency and recipient ledgers remain authoritative. DELIVERY_NEEDS_REVIEW events are never automatically resent; verify provider acceptance before resolving them. Only the existing QA allowlist is enabled.
 
-KP admins see a banner across the staff application for emails delayed after three attempts, deliveries needing manual review, stale scheduler scans, missed workers, and recorded worker HTTP failures. Links open each affected project's email controls. These are **KP alerts**, not separate alert emails; a provider outage cannot prevent this banner from showing. The banner updates on navigation/refresh.
+KP admins see a banner across the staff application for emails delayed after three attempts, deliveries needing manual review, stale scheduler scans, missed workers, lost HTTP requests, and recorded worker HTTP failures. Links open each affected project's email controls. These are **KP alerts**, not separate alert emails; a provider outage cannot prevent this banner from showing. The banner updates on navigation/refresh.
 
 ## Rollout
 
@@ -32,4 +32,4 @@ Disabled ticks reject worker authorization. Existing queued events remain stored
 
 ## Validation
 
-22 isolated database checks cover role restrictions, disabled defaults, hashed credentials, single use, expiry, overlapping leases, guarded completion, disabled mappings/client updates, manual-review exclusion and HTTP failure recording. Three runtime tests cover token parsing and scheduler health thresholds. Run notification and scope regression checks plus the production build and scoped lint.
+24 isolated database checks cover role restrictions, disabled defaults, hashed credentials, single use, expiry, overlapping leases, guarded completion, disabled mappings/client updates, manual-review exclusion and HTTP failure recording. Three runtime tests cover token parsing and scheduler health thresholds. Run notification and scope regression checks plus the production build and scoped lint.

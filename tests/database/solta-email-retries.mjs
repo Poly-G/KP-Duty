@@ -20,6 +20,7 @@ try{
  `);
  const migration=await readFile('supabase/migrations/20261013195548_solta_automatic_email_retries.sql','utf8');
  await db.exec(migration.replace('create extension if not exists pg_net with schema extensions;',''));
+ await db.exec(await readFile('supabase/migrations/20261013200740_solta_retry_missing_worker_alert.sql','utf8'));
  await db.query('insert into organizations values($1,null)',[organization]);await db.query('insert into businesses values($1,$2,true)',[business,'solta']);await db.query('insert into projects values($1,$2,$3,null)',[project,organization,business]);await db.query('insert into solta_portal_project_links values($1,$2,$3,true)',[project,organization,portal]);
  await db.query("insert into solta_notification_control values('solta',true,true,false,$1)",[JSON.stringify([project])]);
  await db.query("insert into solta_notification_events(project_id,event_kind,source_id) values($1,'message.shared',$2)",[project,randomUUID()]);
@@ -40,7 +41,7 @@ try{
  await db.exec('reset role');assert.equal((await db.query('select lease_id from solta_email_scheduler')).rows[0].lease_id,lease);await tick();assert.equal((await db.query('select * from net.test_requests')).rows.length,1);checks+=2;
  await db.exec("set role service_role");await db.query('select kp_finish_solta_email_tick($1,false)',[lease]);await db.exec('reset role');assert.equal((await db.query('select error_code from solta_email_scheduler')).rows[0].error_code,'EMAIL_RETRY_UNAVAILABLE');checks++;
  await tick();const expired=await token();await db.exec("update private.solta_email_tick_tokens set expires_at=now()-interval '1 second';set role service_role");await assert.rejects(begin(expired,randomUUID()),/Invalid tick/);checks++;
- await db.exec('reset role');await tick();const blocked=await token();await db.exec("update solta_notification_control set client_updates_enabled=false;set role service_role");assert.equal((await begin(blocked,randomUUID())).rows[0].project,null);checks++;
+ await db.exec("reset role;update solta_email_scheduler set error_code=null");await tick();assert.equal((await db.query('select error_code from solta_email_scheduler')).rows[0].error_code,'EMAIL_RETRY_UNAVAILABLE');checks++;const blocked=await token();await db.exec("update solta_notification_control set client_updates_enabled=false;set role service_role");assert.equal((await begin(blocked,randomUUID())).rows[0].project,null);checks++;await db.exec('reset role');assert.equal((await db.query('select error_code from solta_email_scheduler')).rows[0].error_code,null);checks++;
  await db.exec('reset role');await tick();assert.equal((await db.query('select * from net.test_requests')).rows.length,3);checks++;
  await db.exec("update solta_notification_control set client_updates_enabled=true;update solta_notification_events set error_code='DELIVERY_NEEDS_REVIEW'");await tick();assert.equal((await db.query('select * from net.test_requests')).rows.length,3);checks++;
  await db.exec("update solta_notification_events set error_code=null;update solta_portal_project_links set enabled=false");await tick();assert.equal((await db.query('select * from net.test_requests')).rows.length,3);checks++;

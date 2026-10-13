@@ -1,0 +1,52 @@
+# Solta client email alerts
+
+Sign-in and welcome emails are working. Public website deposits notify Solta. Project messages, files, reviews and portal payments are recorded and visible in the portal/KP, but their operational email alerts still need to be implemented.
+
+## Current status
+
+| Event | Current behavior | Email status |
+| --- | --- | --- |
+| Sign-in link requested | Sends the branded, one-use sign-in email to that user. | Verified through normal client sign-in. |
+| Welcome invitation sent from KP | Sends the branded portal button to the selected person after access setup completes. | Both QA inboxes confirmed delivery. |
+| Public quote/enquiry submitted | Sends the enquiry to the internal inbox. | Quote delivery previously verified. |
+| Public standard website deposit paid | Verifies Stripe's event and sends an internal deposit email. | Sandbox email verified; live signed delivery awaits a genuine payment. |
+| Client posts a message | Saves the message in KP and displays it for staff. | No email sender is connected to this event. |
+| Client uploads a file | Verifies the stored file and makes it available to authorized clients/staff. | No email sender is connected to file completion. |
+| Staff posts a client message or publishes progress | Publishes the client-visible record and creates a held notification job. | Held jobs have no delivery worker; they are not sent. |
+| Staff shares a file or publishes a working preview | Makes the published file/version available in the portal. | No operational email is sent. |
+| Client approves or requests changes | Saves the decision for the exact version and displays it in KP. | No operational email is sent. |
+| KP publishes a portal payment request | Makes the fixed-amount request available in Payments. | No request email is sent. |
+| A portal payment succeeds | Records the verified payment, synchronizes it to KP and provides the Stripe receipt link. | The portal webhook has no Solta notification email sender. Public deposit email behavior does not cover portal requests. |
+
+## Alert plan
+
+| Priority | Trigger | Recipient | Email action |
+| --- | --- | --- | --- |
+| 1 | New client message | contact@soltaworks.com | Open the KP project to respond. |
+| 1 | Client file finishes verification | contact@soltaworks.com | Open the KP project to review/download the file. |
+| 1 | Client approval or changes request | contact@soltaworks.com | Open the exact version's recorded decision. |
+| 2 | Staff client message, published progress or newly shared file | Active people with access to that company/project | Open the client project. |
+| 2 | New working preview published | The company's final approver | Review the exact published version. |
+| 2 | Live portal payment request published | The company's final approver | Open Payments to see the amount and pay through Stripe. |
+| 2 | Verified portal payment recorded | contact@soltaworks.com and the company's final approver | Staff: open KP. Client: open Payments/receipt. |
+
+These recipients are the proposed defaults. The current access model has an approver and members; there is no separate billing-contact role yet. Welcome invitations remain explicit per-person actions. Internal notes and unpublished drafts do not generate client email alerts.
+
+## Requirements before enabling alerts
+
+Each email should use the Solta logo, a clear company/project name and one button. Project buttons open the normal authenticated portal or KP page. File emails link to the project rather than attaching the private file.
+
+Select only active, authorized recipients at delivery time. Each recorded event and recipient needs a durable delivery record so a retry does not send duplicate notifications. Failed deliveries must remain retryable and visible to staff. Old held jobs should stay held unless deliberately selected for delivery.
+
+Test every alert using the synthetic QA company and the two confirmed inboxes before enabling it for real clients. Test Stripe emails must say TEST and remain separate from real-payment notifications. Email failure must not undo a saved message, verified upload, approval or payment.
+
+## Source evidence
+
+- Sign-in branding: `mettlesite/lib/portal/sign-in-email.ts`.
+- Welcome delivery and retry key: `mettlesite/app/api/integrations/kp/onboarding/route.ts`.
+- Public deposit email: `mettlesite/app/api/stripe/webhook/route.ts` and its sandbox counterpart.
+- Portal payment persistence and KP synchronization: `mettlesite/lib/portal/billing/webhook.ts` and `dispatch.ts`; neither sends notification email.
+- Client message/file/decision requests: `mettlesite/app/api/portal/projects/[id]/actions/route.ts`; this calls KP without an email delivery step.
+- Held staff message/progress notifications: `kp-production-release/supabase/migrations/20261007220430_project_client_collaboration.sql`. Its notification status is constrained to `held`; the current source has no delivery worker.
+
+Audit date: October 13, 2026. This plan does not activate email delivery or send new messages.

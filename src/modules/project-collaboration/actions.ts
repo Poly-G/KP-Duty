@@ -4,7 +4,7 @@ import {z} from 'zod';
 import {createClient} from '@/lib/supabase/server';
 import {requireActiveIdentity} from '@/lib/auth/current-user';
 import {getDelivery} from '@/modules/delivery/queries';
-import {validateDriveUrl,validateProjectFile,MAX_FILE_BYTES} from './files';
+import {validateDriveUrl,validateProjectFile} from './files';
 const uuid=z.string().uuid();
 async function context(form:FormData){
  const {profile}=await requireActiveIdentity();const id=uuid.parse(form.get('id'));const business=z.enum(['solta','snd']).parse(form.get('business'));
@@ -36,7 +36,7 @@ export async function addProjectFile(form:FormData){
  let bytes:Uint8Array|undefined;let path:string|undefined;
  let record:Record<string,unknown>={id:fileId,project_id:id,series_id:series,version,created_by:profile.id};
  if(source==='upload'){
-  const file=form.get('file');if(!(file instanceof File)||file.size>MAX_FILE_BYTES)throw new Error('Choose a file up to 20 MB.');
+  const file=form.get('file');if(!(file instanceof File)||file.size>20*1024*1024)throw new Error('Choose a file up to 20 MB.');
   bytes=new Uint8Array(await file.arrayBuffer());const validated=validateProjectFile(file.name,bytes);path=`${id}/${fileId}/${validated.name}`;
   record={...record,name:validated.name,object_path:path,mime_type:validated.mime,size_bytes:bytes.length,sha256:validated.sha256};
  }else record={...record,name:z.string().trim().min(1).max(200).parse(form.get('name')),drive_url:validateDriveUrl(String(form.get('drive_url')))};

@@ -5,7 +5,7 @@ test('file type is verified against bytes, names are safe, and hashes identify e
  const bytes=Buffer.from('%PDF-1.7\nexample');const file=validateProjectFile('../client brief.pdf',bytes);
  assert.equal(file.mime,'application/pdf');assert.ok(!file.name.includes('/'));assert.equal(file.sha256.length,64);
  assert.throws(()=>validateProjectFile('fake.pdf',Buffer.from('<html>bad</html>')));
- assert.throws(()=>validateProjectFile('file.svg',Buffer.from('<svg/>')));
+ assert.equal(validateProjectFile('file.svg',Buffer.from('<svg/>')).mime,'image/svg+xml');
  assert.throws(()=>validateProjectFile('file.txt',new Uint8Array([0])));
  assert.throws(()=>validateProjectFile('file.txt',new Uint8Array([255])));
  assert.throws(()=>validateProjectFile('file.txt',new Uint8Array(MAX_FILE_BYTES+1)));

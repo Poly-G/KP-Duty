@@ -18,6 +18,7 @@ test('50 MB client uploads accept the boundary, reject larger files, and reserve
 
 test('static SVG stays passive and Office extensions must match their ZIP contents',async()=>{
  assert.equal(validateProjectFile('logo.svg',Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0h1v1z"/></svg>')).mime,'image/svg+xml');
+ for(const prefix of ['s','_s','á'])assert.throws(()=>validateProjectFile('namespaced.svg',Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" xmlns:${prefix}="http://www.w3.org/2000/svg"><${prefix}:script>alert(1)</${prefix}:script></svg>`)));
  for(const source of ['<svg><script>alert(1)</script></svg>','<svg onload="alert(1)"/>','<svg><image href="https://example.com/x"/></svg>','<svg><image href=https://example.com/x /></svg>','<svg><style>@import "https://example.com/x";</style></svg>','<svg><animate attributeName="href" values="javascript:alert(1)"/></svg>','<!DOCTYPE svg [<!ENTITY x SYSTEM "file:///etc/passwd">]><svg/>'])assert.throws(()=>validateProjectFile('active.svg',Buffer.from(source)));
  const book=new ExcelJS.Workbook();book.addWorksheet('QA').addRow(['Solta upload QA']);
  const bytes=new Uint8Array(await book.xlsx.writeBuffer());

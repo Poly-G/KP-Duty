@@ -17,7 +17,7 @@ export function validateProjectFile(name:string,bytes:Uint8Array){
   mime=ext==='heic'?'image/heic':'image/heif';
  }else if(ext==='svg'){
   const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
-  if(!/^\s*(?:<\?xml[^?]*\?>\s*)?<svg[\s/>]/i.test(text)||/<(?:script|foreignObject|iframe|object|embed|animate\w*|set|discard|style)\b|\bon\w+\s*=|(?:href|src)\s*=\s*['"](?!#)|(?:href|src)\s*=\s*[^\s'"]|<!DOCTYPE|<!ENTITY|@import|url\s*\(|\\/i.test(text))throw new Error('Choose a static SVG without scripts or external resources.');
+  if(!/^\s*(?:<\?xml[^?]*\?>\s*)?<svg[\s/>]/i.test(text)||/<(?:[^<>\s/]+:)?(?:script|foreignObject|iframe|object|embed|animate\w*|set|discard|style)\b|\bon\w+\s*=|(?:href|src)\s*=\s*['"](?!#)|(?:href|src)\s*=\s*[^\s'"]|<!DOCTYPE|<!ENTITY|@import|url\s*\(|\\/i.test(text))throw new Error('Choose a static SVG without scripts or external resources.');
   mime='image/svg+xml';
  }else if(ext==='docx'||ext==='xlsx'||ext==='pptx'){
   const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),names:string[]=[];

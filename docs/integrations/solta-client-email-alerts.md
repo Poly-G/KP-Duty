@@ -1,6 +1,6 @@
 # Solta client email alerts
 
-Sign-in and welcome emails are working. Public website deposits notify Solta. Project messages, verified files, review decisions, payment requests and confirmed portal payments now have a durable notification queue and branded delivery endpoint. Local verification passed; hosted tables are installed with delivery disabled. Hosted release and QA inbox delivery are still pending.
+Sign-in and welcome emails are working. Public website deposits notify Solta. Project messages, verified files, review decisions, payment requests and confirmed portal payments now have a durable notification queue and branded delivery endpoint. Local verification passed and the approved commits were released. Both hosted controls allow only the synthetic first-client project. Message, verified-file, exact-version changes-request and payment-request emails are confirmed delivered in Resend. The payment-confirmation email test is pending sandbox Checkout completion.
 
 ## Current status
 
@@ -10,12 +10,12 @@ Sign-in and welcome emails are working. Public website deposits notify Solta. Pr
 | Welcome invitation sent from KP | Sends the branded portal button to the selected person after access setup completes. | Both QA inboxes confirmed delivery. |
 | Public quote/enquiry submitted | Sends the enquiry to the internal inbox. | Quote delivery previously verified. |
 | Public standard website deposit paid | Verifies Stripe's event and sends an internal deposit email. | Sandbox email verified; live signed delivery awaits a genuine payment. |
-| Client posts a message | Saves the message in KP and displays it for staff. | Implemented; awaiting hosted QA activation. |
-| Client uploads a file | Verifies the stored file and makes it available to authorized clients/staff. | Implemented; awaiting hosted QA activation. |
+| Client posts a message | Saves the message in KP and displays it for staff. | Verified delivered for the QA project in Resend (October 13). |
+| Client uploads a file | Verifies the stored file and makes it available to authorized clients/staff. | Verified delivered for the QA project in Resend (October 13). |
 | Staff posts a client message or publishes progress | Publishes the client-visible record and creates a held notification job. | Held jobs have no delivery worker; they are not sent. |
 | Staff shares a file or publishes a working preview | Makes the published file/version available in the portal. | No operational email is sent. |
-| Client approves or requests changes | Saves the decision for the exact version and displays it in KP. | Implemented; awaiting hosted QA activation. |
-| KP publishes a portal payment request | Makes the fixed-amount request available in Payments. | Implemented; awaiting hosted QA activation. |
+| Client approves or requests changes | Saves the decision for the exact version and displays it in KP. | Verified delivered for the QA project in Resend (October 13). |
+| KP publishes a portal payment request | Makes the fixed-amount request available in Payments. | Verified delivered for the QA project in Resend (October 13). |
 | A portal payment succeeds | Records the verified payment, synchronizes it to KP and provides the Stripe receipt link. | Implemented through KP verified-payment event capture; awaiting hosted QA activation. |
 
 ## Alert plan
@@ -60,3 +60,13 @@ KP captures future authorized source events transactionally and leases delivery 
 Retries run on subsequent project activity, an authorized staff project visit, or the admin Retry pending emails action. No periodic background retry schedule is configured. Provider acceptance is distinct from confirmed inbox arrival.
 
 Still to build: client alerts for staff messages, published progress, shared staff files and newly published previews. Current delivery covers incoming client activity and payment events only.
+
+## Hosted QA delivery results
+
+Approved releases: Solta `af169b050cf18aa3161fbba9dc2bfcd1503e5107` (production `HhcVuiCMruuqJAW6mDf5cf8EwNWD`), KP `0578c0651b0a014464c762c8b57a24c949636bb4` (production `9d7W1xPFYsEuUJe9YULuERbRgdWs`). Newer scope-review releases include these ancestors; do not roll them back to repeat this release.
+
+Scope: only KP project `b7ab0318-2cf8-4b47-977e-1b97e581e538`, portal project `3caae450-e8f1-4ab6-8230-a4d5839d005c`. `allow_all_projects` remains false in both databases.
+
+Verified delivered to contact@soltaworks.com: synthetic client message; verified `solta-notification-qa.txt`; changes request for website version 3; request for `[QA] Email-alert sandbox payment — no real money`. Message and request acknowledgement retries retained one provider email per event. Request `e8a47e4d-5d48-4041-9f29-1fb2d44d0643` is $5 in Stripe Sandbox (`livemode=false`). No real money test occurred.
+
+Payment completion currently waits for a Chrome extension popup to be dismissed. Do not describe the paid alert as verified until the signed Stripe event, both ledgers and provider delivery have been read back. No real-client alerts are enabled.

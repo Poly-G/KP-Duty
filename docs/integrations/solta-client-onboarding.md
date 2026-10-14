@@ -38,3 +38,14 @@ Posting a sample client-facing message through the normal staff form queued mess
 The functional releases are Solta 8359def (production 6AQtzbpENoFdR5swea9uxkt6sPFx) and KP 9d6afac (production 2WrnBAj2fptDJuerSyT5Sbut8Mu8). KP 9d4c838 corrects the obsolete staff copy claiming no email is sent or that all message delivery is held. Proof images are /private/tmp/solta-automatic-client-setup.png and /private/tmp/solta-automatic-onboarding-email-delivery.png.
 
 Final KP wording release 9d4c838 is Ready in production deployment C6yq8y3xUuNADb3PJoBqq4MGgLDd at kp-duty.vercel.app. A fresh production page load confirms the obsolete no-email text is absent and the current message delivery guidance is shown. Finished release and Resend QA tabs were closed.
+
+## Follow-up QA — October 13, 2026
+
+The live staff form blocks missing company consent, caps additional teammates at nine, restores Add another person after removing a row, and rejects a duplicate approver/member email with a visible validation message. The duplicate check used only the existing sample project and did not send an invitation. Public probes returned HTTP 401 for unsigned setup, anonymous client identity and unsigned retry-worker requests. 55 Solta backend checks, 28 isolated KP onboarding checks and eight workflow/welcome checks passed (91 total), plus the Solta production build and scoped lint.
+
+Two issues were found and fixed in source:
+
+- Solta e56aec8 adds a first-attempt audit marker and a 23-hour safe retry window for welcome emails. A provider acceptance whose response was lost can no longer result in a second email after Resend's 24-hour idempotency window. Accepted welcomes remain no-ops, deferred first sends for newly guarded setups remain valid, older untracked/ambiguous sends require review, and malformed provider success cannot mark delivery accepted. This uses the existing private audit trail and requires no schema or permission changes.
+- KP dd23fa1 fixes the deliverable form's intrinsic select sizing. At an actual 390-pixel browser viewport, the long requirement option pushed the page scroll width to 437 pixels; the setup panel itself remained inside the viewport. Inputs/selects and grid labels now allow shrinking within the available width.
+
+Release and final hosted phone verification remain pending. The current browser is logged into Poly's Vercel account, which cannot access the Solta team; the Solta login page is open for the owner. The current Supabase connector also denies the optional hosted database read, so this pass does not claim a fresh direct database audit. Prior hosted setup/delivery evidence remains recorded above. No payment or real client was created during this QA pass. Restore the default viewport before account handoff; do not alter or close the user's sign-in tab while they are entering information.

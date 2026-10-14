@@ -5,7 +5,7 @@ import {getDeliverables,getDeliverableReviewers} from '@/modules/deliverables/qu
 import {deliverableKinds} from '@/modules/deliverables/types';
 import {createDeliverable,addDeliverableVersion,reviewDeliverable,publishDeliverable} from '@/modules/deliverables/actions';
 import {getProjectCollaboration} from '@/modules/project-collaboration/queries';
-const field='rounded-lg border border-[var(--border)] p-3';
+const field='min-w-0 w-full rounded-lg border border-[var(--border)] p-3';
 const button='rounded-lg border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-40';
 export async function ProjectDeliverables({id,business,ownerId,requirements}:{id:string;business:string;ownerId:string;requirements:Record<string,string>}) {
   const [deliverables,reviewers,collaboration,{profile}]=await Promise.all([
@@ -16,12 +16,12 @@ export async function ProjectDeliverables({id,business,ownerId,requirements}:{id
   return <section className="mb-7 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
     <h2 className="text-xl font-medium">Deliverables & approvals</h2>
     <p className="mt-2 text-sm text-[var(--muted)]">Review one saved version at a time. A new version needs a fresh review. Approval does not start delivery or launch the project.</p>
-    <ActionForm action={createDeliverable} key={`create-${deliverables.length}`} className="mt-5 grid gap-3" errorMessage="Couldn’t create this deliverable. Check the fields and reviewer, then try again.">
+    <ActionForm action={createDeliverable} key={`create-${deliverables.length}`} className="mt-5 min-w-0 grid gap-3" errorMessage="Couldn’t create this deliverable. Check the fields and reviewer, then try again.">
       {context()}<input type="hidden" name="request_id" value={randomUUID()}/>
-      <label className="grid gap-2 text-sm">Deliverable title<input required name="title" maxLength={200} className={field}/></label>
-      <label className="grid gap-2 text-sm">Deliverable type<select name="kind" className={field}>{Object.entries(deliverableKinds).map(([kind,label])=><option key={kind} value={kind}>{label}</option>)}</select></label>
-      {profile.role==='admin'?<label className="grid gap-2 text-sm">Internal reviewer<select name="reviewer_id" defaultValue={ownerId} className={field}>{reviewers.map(r=><option key={r.id} value={r.id}>{r.display_name||'Team member'}</option>)}</select></label>:<><input type="hidden" name="reviewer_id" value={ownerId}/><p className="text-sm text-[var(--muted)]">The project owner reviews internally. An admin can assign a different reviewer.</p></>}
-      <label className="grid gap-2 text-sm">Related onboarding requirement<select name="requirement_key" className={field}><option value="">No requirement link</option>{Object.entries(requirements).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
+      <label className="min-w-0 grid gap-2 text-sm">Deliverable title<input required name="title" maxLength={200} className={field}/></label>
+      <label className="min-w-0 grid gap-2 text-sm">Deliverable type<select name="kind" className={field}>{Object.entries(deliverableKinds).map(([kind,label])=><option key={kind} value={kind}>{label}</option>)}</select></label>
+      {profile.role==='admin'?<label className="min-w-0 grid gap-2 text-sm">Internal reviewer<select name="reviewer_id" defaultValue={ownerId} className={field}>{reviewers.map(r=><option key={r.id} value={r.id}>{r.display_name||'Team member'}</option>)}</select></label>:<><input type="hidden" name="reviewer_id" value={ownerId}/><p className="text-sm text-[var(--muted)]">The project owner reviews internally. An admin can assign a different reviewer.</p></>}
+      <label className="min-w-0 grid gap-2 text-sm">Related onboarding requirement<select name="requirement_key" className={field}><option value="">No requirement link</option>{Object.entries(requirements).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
       <button type="submit" className={button}>Create deliverable</button>
     </ActionForm>
     <div className="mt-6 space-y-6">{deliverables.map(d=>{
@@ -32,33 +32,33 @@ export async function ProjectDeliverables({id,business,ownerId,requirements}:{id
       return <article key={d.id} className="rounded-xl border border-[var(--border)] p-4">
         <h3 className="font-medium">{d.title}</h3><p className="mt-2 text-xs text-[var(--muted)]">{deliverableKinds[d.kind]} · Reviewer: {d.reviewer?.display_name||'Team member'}{d.requirement_key?` · Requirement: ${requirements[d.requirement_key]||d.requirement_key}`:''}</p>
         <p className="mt-3 text-sm">{current?`Current version ${current.version} · ${internal?.outcome==='approved'?'Internally approved':internal?.outcome==='changes_requested'?'Changes requested':'Awaiting internal review'}${client?` · Client response: ${client.outcome==='approved'?'Approved':'Changes requested'}`:''}`:'No version saved yet.'}</p>
-        <ActionForm key={`version-${d.current_version}`} action={addDeliverableVersion} className="mt-4 grid gap-3" errorMessage="Couldn’t save this version. Use ready uploaded files from this project. If another teammate saved a version, reload and try again.">
+        <ActionForm key={`version-${d.current_version}`} action={addDeliverableVersion} className="mt-4 min-w-0 grid gap-3" errorMessage="Couldn’t save this version. Use ready uploaded files from this project. If another teammate saved a version, reload and try again.">
           {context()}<input type="hidden" name="deliverable_id" value={d.id}/><input type="hidden" name="expected_version" value={d.current_version}/><input type="hidden" name="request_id" value={randomUUID()}/>
-          <label className="grid gap-2 text-sm">Version summary for {d.title} · shown when published<textarea required name="description" maxLength={10000} rows={3} className={field}/></label>
+          <label className="min-w-0 grid gap-2 text-sm">Version summary for {d.title} · shown when published<textarea required name="description" maxLength={10000} rows={3} className={field}/></label>
           <fieldset className="space-y-2"><legend className="mb-2 text-sm">Attach exact file versions · up to 20</legend>{availableFiles.map(f=><label key={f.id} className="flex gap-2 text-sm"><input type="checkbox" name="file_ids" value={f.id}/>{f.name} · File version {f.version}</label>)}</fieldset>
           <p className="text-xs text-[var(--muted)]">Drive contents can change outside KP. Upload a fixed export for an approval attachment. Text-only versions can be reviewed without a file.</p>
           <button type="submit" className={button}>Save new version of {d.title}</button>
         </ActionForm>
-        {current&&!internal&&canReview?<ActionForm action={reviewDeliverable} key={`internal-${current.id}`} className="mt-5 grid gap-3" errorMessage="Couldn’t record this review. Only the assigned reviewer or an admin can review the current version. Reload if it changed.">
+        {current&&!internal&&canReview?<ActionForm action={reviewDeliverable} key={`internal-${current.id}`} className="mt-5 min-w-0 grid gap-3" errorMessage="Couldn’t record this review. Only the assigned reviewer or an admin can review the current version. Reload if it changed.">
           {context()}<input type="hidden" name="request_id" value={randomUUID()}/><input type="hidden" name="version_id" value={current.id}/><input type="hidden" name="lane" value="internal"/>
-          <label className="grid gap-2 text-sm">Internal outcome for {d.title} · Version {current.version}<select name="outcome" className={field}><option value="approved">Approve</option><option value="changes_requested">Request changes</option></select></label>
-          <label className="grid gap-2 text-sm">Internal review note<textarea required name="note" maxLength={5000} rows={2} className={field}/></label>
+          <label className="min-w-0 grid gap-2 text-sm">Internal outcome for {d.title} · Version {current.version}<select name="outcome" className={field}><option value="approved">Approve</option><option value="changes_requested">Request changes</option></select></label>
+          <label className="min-w-0 grid gap-2 text-sm">Internal review note<textarea required name="note" maxLength={5000} rows={2} className={field}/></label>
           <button type="submit" className={button}>Record internal review of version {current.version}</button>
         </ActionForm>:null}
         {current&&!current.published_at?<ActionForm action={publishDeliverable} className="mt-4" errorMessage="Couldn’t publish this version. It needs internal approval and must still be the current version.">
           {context()}<input type="hidden" name="version_id" value={current.id}/>{business==='solta'?<label className="mb-3 grid gap-2 text-sm">Working preview URL · optional<input type="url" name="preview_url" maxLength={2000} placeholder="https://" className={field}/><span className="text-xs text-[var(--muted)]">Use a link the client can open. This link stays tied to this version; changes need a new version.</span></label>:null}<button type="submit" disabled={internal?.outcome!=='approved'} className={button}>Publish version {current.version} and share its attached files</button>
         </ActionForm>:null}
-        {business==='solta'&&current?.published_at&&!current.preview_url?<ActionForm action={publishDeliverable} key={`preview-${current.id}`} className="mt-4 grid gap-3" errorMessage="Couldn’t share the working preview. Use a client-accessible HTTPS link for the current version.">
-          {context()}<input type="hidden" name="version_id" value={current.id}/><label className="grid gap-2 text-sm">Working preview URL<input type="url" required name="preview_url" maxLength={2000} placeholder="https://" className={field}/></label><p className="text-xs text-[var(--muted)]">The client reviews this exact version. The link cannot be changed after sharing.</p><button className={button} type="submit">Share working preview for version {current.version}</button>
+        {business==='solta'&&current?.published_at&&!current.preview_url?<ActionForm action={publishDeliverable} key={`preview-${current.id}`} className="mt-4 min-w-0 grid gap-3" errorMessage="Couldn’t share the working preview. Use a client-accessible HTTPS link for the current version.">
+          {context()}<input type="hidden" name="version_id" value={current.id}/><label className="min-w-0 grid gap-2 text-sm">Working preview URL<input type="url" required name="preview_url" maxLength={2000} placeholder="https://" className={field}/></label><p className="text-xs text-[var(--muted)]">The client reviews this exact version. The link cannot be changed after sharing.</p><button className={button} type="submit">Share working preview for version {current.version}</button>
         </ActionForm>:null}
         {current?.preview_url?<p className="mt-3 text-sm"><a href={current.preview_url} target="_blank" rel="noopener noreferrer" className="underline">Open version {current.version} working preview</a></p>:null}
-        {current?.published_at&&!client?<ActionForm action={reviewDeliverable} key={`client-${current.id}`} className="mt-5 grid gap-3" errorMessage="Couldn’t record this client response. Include the client’s name and evidence, and review the latest published version.">
+        {current?.published_at&&!client?<ActionForm action={reviewDeliverable} key={`client-${current.id}`} className="mt-5 min-w-0 grid gap-3" errorMessage="Couldn’t record this client response. Include the client’s name and evidence, and review the latest published version.">
           {context()}<input type="hidden" name="request_id" value={randomUUID()}/><input type="hidden" name="version_id" value={current.id}/><input type="hidden" name="lane" value="client_record"/>
           <h4 className="text-sm font-medium">Record client response from email or a meeting</h4><p className="text-xs text-[var(--muted)]">Record an actual response received outside the portal. Responses submitted through the client portal appear here automatically.</p>
-          <label className="grid gap-2 text-sm">Client name<input required name="client_name" maxLength={200} className={field}/></label>
-          <label className="grid gap-2 text-sm">Client outcome for {d.title} · Version {current.version}<select name="outcome" className={field}><option value="approved">Approved</option><option value="changes_requested">Changes requested</option></select></label>
-          <label className="grid gap-2 text-sm">Client feedback · visible in portal<textarea required name="note" maxLength={5000} rows={2} className={field}/></label>
-          <label className="grid gap-2 text-sm">Evidence · internal only<textarea required name="evidence" maxLength={5000} rows={2} placeholder="Email reference, meeting date and response, or evidence link" className={field}/></label>
+          <label className="min-w-0 grid gap-2 text-sm">Client name<input required name="client_name" maxLength={200} className={field}/></label>
+          <label className="min-w-0 grid gap-2 text-sm">Client outcome for {d.title} · Version {current.version}<select name="outcome" className={field}><option value="approved">Approved</option><option value="changes_requested">Changes requested</option></select></label>
+          <label className="min-w-0 grid gap-2 text-sm">Client feedback · visible in portal<textarea required name="note" maxLength={5000} rows={2} className={field}/></label>
+          <label className="min-w-0 grid gap-2 text-sm">Evidence · internal only<textarea required name="evidence" maxLength={5000} rows={2} placeholder="Email reference, meeting date and response, or evidence link" className={field}/></label>
           <button type="submit" className={button}>Record client response to version {current.version}</button>
         </ActionForm>:null}
         <details className="mt-5"><summary className="cursor-pointer text-sm">Versions & review history</summary><div className="mt-3 space-y-4">{d.versions.map(v=><section key={v.id} className="rounded-lg bg-[var(--surface-subtle)] p-3">

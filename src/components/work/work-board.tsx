@@ -1,5 +1,7 @@
 "use client";
 
+import { RecordNotes } from "@/components/activity/record-notes";
+
 import {
   DndContext,
   PointerSensor,
@@ -127,6 +129,7 @@ function TaskCard({
           <Check size={16} />
         </button>
       </div>
+      <button type="button" onClick={onOpen} className="mt-3 text-xs text-[var(--muted)] underline underline-offset-4">Add note</button>
     </article>
   );
 }
@@ -219,6 +222,8 @@ function TaskDetail({
           </button>
         </div>
 
+        <RecordNotes key={task.id} entityType="task" entityId={task.id} expanded />
+
         <div className="mt-7 space-y-6">
           <section>
             <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
@@ -286,7 +291,7 @@ function TaskDetail({
           {task.notes ? (
             <details className="rounded-xl border border-[var(--border)] p-4">
               <summary className="cursor-pointer text-xs font-medium text-[var(--muted-strong)]">
-                Notes
+                Original task notes
               </summary>
               <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--muted-strong)]">
                 {task.notes}
@@ -550,9 +555,9 @@ export function WorkBoard({ initialTasks }: { initialTasks: WorkTask[] }) {
               {finished.map((task) => (
                 <div key={task.id} className="flex items-center gap-3 px-4 py-3">
                   <Check size={15} className="text-emerald-700" />
-                  <span className="min-w-0 flex-1 truncate text-sm text-[var(--muted)] line-through">
+                  <button type="button" onClick={() => setSelectedTask(task)} className="min-w-0 flex-1 truncate text-left text-sm text-[var(--muted)] line-through">
                     {task.title}
-                  </span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleReopen(task)}

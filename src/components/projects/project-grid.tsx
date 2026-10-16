@@ -1,5 +1,7 @@
 "use client";
 
+import { RecordNotes } from "@/components/activity/record-notes";
+
 import { ExternalLink, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { setProjectStatus } from "@/modules/projects/actions";
@@ -125,6 +127,7 @@ function ProjectDetail({
             <ExternalLink size={14} />
           </a>
         ) : null}
+        <RecordNotes key={project.id} entityType="project" entityId={project.id} expanded />
       </aside>
     </div>
   );

@@ -1,5 +1,7 @@
 "use client";
 
+import { RecordNotes } from "@/components/activity/record-notes";
+
 import { ActionForm } from "@/components/action-form";
 
 import { X } from "lucide-react";
@@ -133,6 +135,7 @@ function DecisionDetail({
             </>
           ) : null}
         </div>
+        <RecordNotes key={decision.id} entityType="decision" entityId={decision.id} expanded />
       </aside>
     </div>
   );

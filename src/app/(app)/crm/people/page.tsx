@@ -1,3 +1,4 @@
+import { RecordNotes } from "@/components/activity/record-notes";
 import { ActionForm } from "@/components/action-form";
 import { createPerson } from "@/modules/crm/actions";
 import { listOrganizations, listPeople } from "@/modules/crm/queries";
@@ -93,6 +94,7 @@ export default async function PeoplePage() {
                   .filter(Boolean)
                   .join(" · ") || person.email || "No details yet"}
               </p>
+              <RecordNotes entityType="person" entityId={person.id} />
             </article>
           ))}
         </div>

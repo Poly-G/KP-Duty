@@ -1,5 +1,7 @@
 "use client";
 
+import { RecordNotes } from "@/components/activity/record-notes";
+
 import {
   DndContext,
   PointerSensor,
@@ -72,6 +74,7 @@ function OpportunityCard({
           ) : null}
         </button>
       </div>
+      <button type="button" onClick={onOpen} className="mt-3 text-xs text-[var(--muted)] underline underline-offset-4">Add note</button>
     </article>
   );
 }
@@ -175,6 +178,8 @@ function OpportunityDetail({
             <X size={18} />
           </button>
         </div>
+
+        <RecordNotes key={opportunity.id} entityType="opportunity" entityId={opportunity.id} expanded />
 
         <div className="mt-7 space-y-6">
           {opportunity.nexAttemptId && <section className="rounded-xl border border-[var(--border)] p-4">

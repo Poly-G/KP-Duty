@@ -1,3 +1,4 @@
+import { RecordNotes } from "@/components/activity/record-notes";
 import { ActionForm } from "@/components/action-form";
 import { ExternalLink } from "lucide-react";
 import { createOrganization } from "@/modules/crm/actions";
@@ -63,7 +64,7 @@ export default async function CompaniesPage() {
               key={organization.id}
               className="flex items-start justify-between gap-5 px-4 py-4"
             >
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <h2 className="truncate text-sm font-medium">
                   {organization.name}
                 </h2>
@@ -72,6 +73,7 @@ export default async function CompaniesPage() {
                     .filter(Boolean)
                     .join(", ") || organization.domain || "No location/domain yet"}
                 </p>
+                <RecordNotes entityType="organization" entityId={organization.id} />
               </div>
 
               {organization.website ? (

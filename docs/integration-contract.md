@@ -2,6 +2,10 @@
 
 Status: **plumbing only; no live child-system integrations enabled**
 
+## Nex ownership correction — October 8, 2026 PT
+
+KP is now Nex's admin source of truth and sole admin workspace. Nex keeps protected domain services and its Veteran/Provider customer workspaces. Reuse KP Work, staff administration and operating surfaces; do not create a second Nex admin frontend. The provider receiver and return-request preparation are implemented but inactive, and do not cover the full admin connection. See [Nex provider handoff](integrations/nex-provider-handoff.md) and [admin reconciliation](integrations/nex-admin-reconciliation.md) for current evidence and remaining V1 work. This supersedes any separate-Nex-admin delivery assumption below; other child-system boundaries and integration controls remain unchanged.
+
 KP Duty is the control plane. Solta, SnD, and Nex keep their detailed operational backends.
 
 ## Rule

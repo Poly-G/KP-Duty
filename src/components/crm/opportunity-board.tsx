@@ -4,6 +4,7 @@ import { RecordNotes } from "@/components/activity/record-notes";
 
 import {
   DndContext,
+  KeyboardSensor,
   PointerSensor,
   useDraggable,
   useDroppable,
@@ -11,9 +12,12 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
+import { SortableContext, useSortable, horizontalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { createCrmColumn, reorderCrmColumns } from "@/modules/crm/column-actions";
+import { useRouter } from "next/navigation";
 import { CSS } from "@dnd-kit/utilities";
 import { ExternalLink, GripVertical, X } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { moveOpportunityStage } from "@/modules/crm/actions";
 import type {
   Opportunity,
@@ -88,6 +92,7 @@ function StageColumn({
   opportunities: Opportunity[];
   onOpen: (opportunity: Opportunity) => void;
 }) {
+  const sortable = useSortable({ id: `column:${stage.id}`, data: { type: "column" } });
   const { setNodeRef, isOver } = useDroppable({
     id: `stage:${stage.id}`,
     data: { stageId: stage.id },
@@ -95,14 +100,15 @@ function StageColumn({
 
   return (
     <section
-      ref={setNodeRef}
+      ref={node => { setNodeRef(node); sortable.setNodeRef(node); }}
+      style={{ transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition }}
       className={cn(
         "w-72 shrink-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3 transition",
         isOver && "border-neutral-400 bg-neutral-100",
       )}
     >
       <div className="mb-3 flex items-center justify-between px-1">
-        <h2 className="text-sm font-semibold">{stage.name}</h2>
+        <div className="flex min-w-0 items-center gap-2"><button type="button" aria-label={`Move ${stage.name} column`} title="Drag to move column" className="cursor-grab rounded p-1 text-[var(--muted)] hover:bg-white touch-none" {...sortable.attributes} {...sortable.listeners}><GripVertical size={15}/></button><h2 className="break-words text-sm font-semibold">{stage.name}</h2></div>
         <span className="text-xs tabular-nums text-[var(--muted)]">
           {opportunities.length}
         </span>
@@ -270,13 +276,20 @@ function OpportunityDetail({
 
 export function OpportunityBoard({
   businessSlug,
-  stages,
+  pipelineId,
+  stages: initialStages,
   initialOpportunities,
 }: {
   businessSlug: string;
+  pipelineId: string;
   stages: PipelineStage[];
   initialOpportunities: Opportunity[];
 }) {
+  const [stages, setStages] = useState(initialStages);
+  const [adding, setAdding] = useState(false);
+  const [columnName, setColumnName] = useState("");
+  const columnAttempt = useRef<{ name: string; id: string } | null>(null);
+  const router = useRouter();
   const [opportunities, setOpportunities] = useState(initialOpportunities);
   const [selected, setSelected] = useState<Opportunity | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -286,6 +299,7 @@ export function OpportunityBoard({
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },
     }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   const grouped = useMemo(
@@ -302,6 +316,21 @@ export function OpportunityBoard({
   const handleDragEnd = (event: DragEndEvent) => {
     if (isPending) return;
     setSaveError("");
+    if (String(event.active.id).startsWith("column:")) {
+      if (!event.over) return;
+      const from = stages.findIndex(stage => `column:${stage.id}` === String(event.active.id));
+      const overId = String(event.over.id).replace(/^(column|stage):/, "");
+      const to = stages.findIndex(stage => stage.id === overId || opportunities.some(card => card.id === overId && card.stage_id === stage.id));
+      if (from < 0 || to < 0 || from === to) return;
+      const previous = stages;
+      const reordered = arrayMove(stages, from, to);
+      setStages(reordered);
+      startTransition(async () => {
+        try { await reorderCrmColumns(pipelineId, previous.map(stage => stage.id), reordered.map(stage => stage.id)); }
+        catch { setStages(previous); setSaveError("The column couldn’t be moved. Refresh the board and try again."); }
+      });
+      return;
+    }
     const opportunityId = String(event.active.id);
     const over = event.over;
     if (!over) return;
@@ -312,8 +341,8 @@ export function OpportunityBoard({
     if (!opportunity || opportunity.nexAttemptId) return;
 
     const overId = String(over.id);
-    const destinationStageId = overId.startsWith("stage:")
-      ? overId.replace("stage:", "")
+    const destinationStageId = /^(stage|column):/.test(overId)
+      ? overId.replace(/^(stage|column):/, "")
       : undefined;
 
     if (
@@ -351,6 +380,7 @@ export function OpportunityBoard({
       {saveError ? <p role="alert" className="text-sm text-red-700">{saveError}</p> : null}
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-4">
+          <SortableContext items={stages.map(stage => `column:${stage.id}`)} strategy={horizontalListSortingStrategy}>
           {stages.map((stage) => (
             <StageColumn
               key={stage.id}
@@ -359,6 +389,27 @@ export function OpportunityBoard({
               onOpen={setSelected}
             />
           ))}
+          </SortableContext>
+          <div className="w-72 shrink-0">
+            {adding ? <form className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3" onSubmit={event => {
+              event.preventDefault();
+              const name = columnName.trim();
+              if (!name || isPending) return;
+              if (columnAttempt.current?.name !== name) columnAttempt.current = { name, id: crypto.randomUUID() };
+              const id = columnAttempt.current.id;
+              setSaveError("");
+              startTransition(async () => {
+                try {
+                  const column = await createCrmColumn(pipelineId, id, name);
+                  setStages(current => current.some(stage => stage.id === column.id) ? current : [...current, column]);
+                  setColumnName(""); setAdding(false); columnAttempt.current = null; router.refresh();
+                } catch { setSaveError("The column couldn’t be added. Your name is still here; please try again."); }
+              });
+            }}>
+              <label className="text-xs font-medium">Column name<input autoFocus required maxLength={80} value={columnName} onChange={event => setColumnName(event.target.value)} placeholder="e.g. Call back next week" className="mt-2 w-full rounded-lg border border-[var(--border)] p-2 text-sm" /></label>
+              <div className="mt-3 flex gap-3"><button type="submit" disabled={!columnName.trim() || isPending} className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs text-white disabled:opacity-50">Add column</button><button type="button" onClick={() => setAdding(false)} className="text-xs text-[var(--muted)]">Cancel</button></div>
+            </form> : <button type="button" onClick={() => setAdding(true)} className="w-full rounded-2xl border border-dashed border-[var(--border)] p-4 text-left text-sm text-[var(--muted)] hover:bg-[var(--surface-subtle)]">+ Add column</button>}
+          </div>
         </div>
       </DndContext>
 

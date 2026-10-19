@@ -1,5 +1,6 @@
 "use client";
 
+import { ColumnHeading } from "@/components/crm/column-heading";
 import { RecordNotes } from "@/components/activity/record-notes";
 
 import {
@@ -84,10 +85,14 @@ function OpportunityCard({
 }
 
 function StageColumn({
+  pipelineId,
+  onRenamed,
   stage,
   opportunities,
   onOpen,
 }: {
+  pipelineId: string;
+  onRenamed: (stage: PipelineStage) => void;
   stage: PipelineStage;
   opportunities: Opportunity[];
   onOpen: (opportunity: Opportunity) => void;
@@ -108,7 +113,7 @@ function StageColumn({
       )}
     >
       <div className="mb-3 flex items-center justify-between px-1">
-        <div className="flex min-w-0 items-center gap-2"><button type="button" aria-label={`Move ${stage.name} column`} title="Drag to move column" className="cursor-grab rounded p-1 text-[var(--muted)] hover:bg-white touch-none" {...sortable.attributes} {...sortable.listeners}><GripVertical size={15}/></button><h2 className="break-words text-sm font-semibold">{stage.name}</h2></div>
+        <div className="flex min-w-0 items-center gap-2"><button type="button" aria-label={`Move ${stage.name} column`} title="Drag to move column" className="cursor-grab rounded p-1 text-[var(--muted)] hover:bg-white touch-none" {...sortable.attributes} {...sortable.listeners}><GripVertical size={15}/></button><ColumnHeading stage={stage} pipelineId={pipelineId} onRenamed={onRenamed} /></div>
         <span className="text-xs tabular-nums text-[var(--muted)]">
           {opportunities.length}
         </span>
@@ -383,6 +388,8 @@ export function OpportunityBoard({
           <SortableContext items={stages.map(stage => `column:${stage.id}`)} strategy={horizontalListSortingStrategy}>
           {stages.map((stage) => (
             <StageColumn
+              pipelineId={pipelineId}
+              onRenamed={renamed => setStages(current => current.map(stage => stage.id === renamed.id ? renamed : stage))}
               key={stage.id}
               stage={stage}
               opportunities={grouped[stage.id] ?? []}

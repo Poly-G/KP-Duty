@@ -26,3 +26,13 @@ export async function reorderCrmColumns(pipelineId: string, expected: string[], 
   if (error) throw new Error("Unable to move column. Refresh the board and try again.");
   revalidatePath("/crm", "layout");
 }
+
+export async function renameCrmColumn(pipelineId: string, id: string, expected: string, name: string): Promise<PipelineStage> {
+  const input = z.object({ pipelineId: uuid, id: uuid, expected: z.string().max(80), name: z.string().trim().min(1).max(80) }).parse({ pipelineId, id, expected, name });
+  await requireActiveIdentity();
+  const db = await createClient();
+  const { data, error } = await db.rpc("kp_rename_crm_column", { p_pipeline: input.pipelineId, p_id: input.id, p_expected: input.expected, p_name: input.name });
+  if (error) throw new Error("Unable to rename column. Refresh the board and try again.");
+  revalidatePath("/crm", "layout");
+  return data as PipelineStage;
+}

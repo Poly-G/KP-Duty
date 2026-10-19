@@ -16,6 +16,7 @@ alter table pipeline_stages enable row level security;
 grant select,insert,update,delete on pipeline_stages to authenticated;
 create policy reads on pipeline_stages for select to authenticated using(private.is_active_member());`);
 await db.exec(await readFile(new URL('../../supabase/migrations/20261019194700_crm_custom_columns.sql', import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../../supabase/migrations/20261019195648_crm_column_names.sql', import.meta.url),'utf8'));
 async function user(n){await db.exec(`reset role;set role authenticated;select set_config('request.jwt.claim.sub','${id(n)}',false)`);}
 const create = (pipe,n,name) => db.query('select public.kp_create_crm_column($1,$2,$3) result',[id(pipe),id(n),name]);
 const reorder = (expected,order) => db.query('select public.kp_reorder_crm_columns($1,$2::uuid[],$3::uuid[])',[id(10),expected.map(id),order.map(id)]);
@@ -40,6 +41,19 @@ await assert.rejects(db.query("insert into pipeline_stages values($1,$2,'bad','b
 await user(2);await create(10,24,'Second teammate');
 await assert.rejects(reorder([23,20,21],[20,23,21]),/exactly once/);
 await reorder([23,20,21,24],[24,21,20,23]);
-await user(3);await assert.rejects(create(10,25,'Disabled'),/Active team/);await assert.rejects(reorder([24,21,20,23],[23,20,21,24]),/Active team/);
+const rename = (pipe,n,expected,name) => db.query('select public.kp_rename_crm_column($1,$2,$3,$4) result',[id(pipe),id(n),expected,name]);
+const renamed=(await rename(10,23,'Follow up','  Call next week  ')).rows[0].result;
+assert.equal(renamed.name,'Call next week');assert.equal(renamed.slug,created.slug);assert.equal(renamed.kind,'open');
+assert.deepEqual((await rename(10,23,'Follow up','Call next week')).rows[0].result,renamed);
+await assert.rejects(rename(10,23,'Follow up','Stale'),/Column changed/);
+await assert.rejects(rename(10,20,'New','Changed'),/Built-in column/);
+await assert.rejects(rename(10,21,'Won','Changed'),/Built-in column/);
+await assert.rejects(rename(11,23,'Call next week','Other pipeline'),/Column not found/);
+await assert.rejects(rename(10,23,'Call next week',' '),/Column name/);
+await assert.rejects(rename(10,23,'Call next week','x'.repeat(81)),/Column name/);
+await assert.rejects(rename(12,23,'Call next week','Archived'),/Pipeline not found/);
+await user(3);await assert.rejects(rename(10,23,'Call next week','Disabled'),/Active team/);
+await assert.rejects(create(10,25,'Disabled'),/Active team/);await assert.rejects(reorder([24,21,20,23],[23,20,21,24]),/Active team/);
 await db.exec('reset role;set role anon');await assert.rejects(create(10,25,'Anonymous'),/permission denied/);
+await assert.rejects(rename(10,23,'Call next week','Anonymous'),/permission denied/);
 await db.close();console.log('CRM column checks passed: creation, stable retries, validation, ordering, stale edits, pipeline isolation, preserved stage kinds, member access, direct-write/disabled/anonymous denial.');
